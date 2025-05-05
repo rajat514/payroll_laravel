@@ -1,0 +1,35 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('employee_designations', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('employee_id')->constrained();
+            $table->string('designation');
+            $table->string('cadre');
+            $table->enum('job_group', ['A', 'B', 'C', 'D']);
+            $table->date('effective_from');
+            $table->date('effective_till')->nullable();
+            $table->string('promotion_order_no')->nullable();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('employee_designations');
+    }
+};
