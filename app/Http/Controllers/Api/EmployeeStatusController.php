@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use App\Models\EmployeeStatus;
-use PhpParser\Node\Stmt\TryCatch;
 
 class EmployeeStatusController extends Controller
 {
@@ -84,7 +83,7 @@ class EmployeeStatusController extends Controller
 
     function show($id)
     {
-        $data = EmployeeStatus::where('employee_id', $id)->get();
+        $data = EmployeeStatus::with('employee')->where('employee_id', $id)->get();
         return response()->json(['data' => $data]);
     }
 }

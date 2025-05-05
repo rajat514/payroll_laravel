@@ -30,6 +30,11 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('employees', \App\Http\Controllers\Api\EmployeeController::class);
 
     Route::apiResource('employee-status', \App\Http\Controllers\Api\EmployeeStatusController::class)->except(['index', 'destroy']);
+
+    Route::apiResource('employee-bank', \App\Http\Controllers\Api\EmployeeBankController::class)->except('destroy');
+    Route::get('/employee-bank-status/{id}', [\App\Http\Controllers\Api\EmployeeBankController::class, 'changeStatus']);
+
+    Route::apiResource('employee-designation', \App\Http\Controllers\Api\EmployeeDesignationController::class)->except('destroy');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

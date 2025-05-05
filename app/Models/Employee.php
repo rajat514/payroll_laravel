@@ -14,4 +14,14 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeStatus::class);
     }
+
+    public function employeeDesignation(): HasMany
+    {
+        return $this->hasMany(EmployeeDesignation::class);
+    }
+
+    public function employeeBank(): HasMany
+    {
+        return $this->hasMany(EmployeeBankAccount::class);
+    }
 }
