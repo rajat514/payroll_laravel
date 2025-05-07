@@ -17,6 +17,6 @@ class EmployeePayStructure extends Model
 
     public function PayMatrixCell(): BelongsTo
     {
-        return $this->belongsTo(PayMatrixCell::class);
+        return $this->belongsTo(PayMatrixCell::class, 'matrix_cell_id');
     }
 }

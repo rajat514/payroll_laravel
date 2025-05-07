@@ -10,9 +10,17 @@ class DearnessAllowanceRateController extends Controller
 {
     function index()
     {
-        $data = DearnesAllowanceRate::all();
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
 
-        return response()->json(['data' => $data]);
+        $query = DearnesAllowanceRate::query();
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function store(Request $request)

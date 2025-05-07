@@ -19,6 +19,10 @@ Route::post('login', [\App\Http\Controllers\Api\UserController::class, 'login'])
 Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::get('/user', [\App\Http\Controllers\Api\UserController::class, 'user']);
+    Route::get('/users', [\App\Http\Controllers\Api\UserController::class, 'index']);
+    Route::get('/user-status/{id}', [\App\Http\Controllers\Api\UserController::class, 'changeStatus']);
+    Route::post('/user', [\App\Http\Controllers\Api\UserController::class, 'store']);
+    Route::post('/user/{id}', [\App\Http\Controllers\Api\UserController::class, 'update']);
 
     // Route::get('/quarters', [\App\Http\Controllers\Api\QuarterController::class, 'index']);
     // Route::post('/quarters', [\App\Http\Controllers\Api\QuarterController::class, 'store']);
@@ -45,6 +49,20 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('employee-pay-structures', \App\Http\Controllers\Api\EmployeePayStructureController::class)->except(['destroy,show']);
 
     Route::apiResource('dearness-allowance-rate', \App\Http\Controllers\Api\DearnessAllowanceRateController::class)->except(['destroy,show']);
+
+    Route::apiResource('house-rent-allowance-rate', \App\Http\Controllers\Api\HouseRentAllowanceRateController::class)->except(['destroy,show']);
+
+    Route::apiResource('non-practicing-allowance-rate', \App\Http\Controllers\Api\NonPracticingAllowanceRateController::class)->except(['destroy,show']);
+
+    Route::apiResource('transport-allowance-rate', \App\Http\Controllers\Api\TransportAllowanceRateController::class)->except(['destroy,show']);
+
+    Route::apiResource('uniform-allowance-rate', \App\Http\Controllers\Api\UniformAllowanceRateController::class)->except(['destroy,show']);
+
+    Route::apiResource('credit-society-member', \App\Http\Controllers\Api\CreditSocietyMembershipController::class)->except(['destroy,show']);
+
+    Route::apiResource('employee-gis', \App\Http\Controllers\Api\EmployeeGISController::class)->except(['destroy,show']);
+
+    Route::apiResource('employee-loan', \App\Http\Controllers\Api\LoanAdvanceController::class)->except(['destroy,show']);
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

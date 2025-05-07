@@ -34,4 +34,19 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeePayStructure::class);
     }
+
+    public function crediSocietyMember(): HasMany
+    {
+        return $this->hasMany(CreditSocietyMembership::class);
+    }
+
+    public function employeeGIS(): HasMany
+    {
+        return $this->hasMany(EmployeeGIS::class);
+    }
+
+    public function employeeLoan(): HasMany
+    {
+        return $this->hasMany(LoanAdvance::class);
+    }
 }

@@ -10,9 +10,17 @@ class PayMatrixCellController extends Controller
 {
     function index()
     {
-        $data = PayMatrixCell::with('payMatrixLevel')->get();
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
 
-        return response()->json(['data' => $data]);
+        $query = PayMatrixCell::with('payMatrixLevel');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function store(Request $request)
