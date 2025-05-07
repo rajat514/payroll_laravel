@@ -10,13 +10,20 @@ class EmployeeDesignationController extends Controller
 {
     function index()
     {
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
         $query = EmployeeDesignation::with('employee');
         $query->when(
             request('employee_id'),
             fn($q) => $q->where('employee_id', request('employee_id'))
         );
-        $data = $query->get();
-        return response()->json(['data' => $data]);
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function show($id)

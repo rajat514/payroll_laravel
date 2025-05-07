@@ -10,12 +10,19 @@ class EmployeeBankController extends Controller
 {
     function index()
     {
-        $query = EmployeeBankAccount::with('employee')->when(
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = EmployeeBankAccount::with('employee:id,first_name,last_name,date_of_joining')->when(
             request('employee_id'),
             fn($q) => $q->where('employee_id', request('employee_id'))
         );
-        $data = $query->get();
-        return response()->json(['data' => $data]);
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function show($id)

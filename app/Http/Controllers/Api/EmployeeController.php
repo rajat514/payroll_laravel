@@ -197,7 +197,11 @@ class EmployeeController extends Controller
 
     function show($id)
     {
-        $data = Employee::with('employeeStatus')->find($id);
+        $data = Employee::with(
+            'employeeStatus:id,employee_id,status,effective_from,effective_till',
+            'employeeBank',
+            'employeeDesignation'
+        )->find($id);
         if (!$data) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 
         return response()->json(['data' => $data]);

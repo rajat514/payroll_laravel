@@ -24,4 +24,14 @@ class Employee extends Model
     {
         return $this->hasMany(EmployeeBankAccount::class);
     }
+
+    public function employeeQuarter(): HasMany
+    {
+        return $this->hasMany(EmployeeQuarter::class);
+    }
+
+    public function employeePayStructure(): HasMany
+    {
+        return $this->hasMany(EmployeePayStructure::class);
+    }
 }

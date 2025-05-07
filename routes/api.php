@@ -35,6 +35,16 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/employee-bank-status/{id}', [\App\Http\Controllers\Api\EmployeeBankController::class, 'changeStatus']);
 
     Route::apiResource('employee-designation', \App\Http\Controllers\Api\EmployeeDesignationController::class)->except('destroy');
+
+    Route::apiResource('employee-quarters', \App\Http\Controllers\Api\EmployeeQuarterController::class)->except('destroy');
+
+    Route::apiResource('pay-matrix-levels', \App\Http\Controllers\Api\PayMatrixLevelController::class)->except(['destroy,show']);
+
+    Route::apiResource('pay-matrix-cells', \App\Http\Controllers\Api\PayMatrixCellController::class)->except(['destroy,show']);
+
+    Route::apiResource('employee-pay-structures', \App\Http\Controllers\Api\EmployeePayStructureController::class)->except(['destroy,show']);
+
+    Route::apiResource('dearness-allowance-rate', \App\Http\Controllers\Api\DearnessAllowanceRateController::class)->except(['destroy,show']);
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
