@@ -1,0 +1,40 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('monthly_pensions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('pensioner_id')->constrained('pensioner_information');
+            $table->date('month');
+            $table->float('basic_pension', 10,2);
+            $table->float('commutation_amount', 10,2);
+            $table->float('additional_pension', 10,2);
+            $table->foreignId('dr_id')->nullable()->constrained('dearness_reliefs'); // References DR rate applied
+            $table->float('dr_amount', 10,2)->nullable(); // Calculated DR amount
+            $table->float('medical_allowance', 10,2); // Medical allowance
+            $table->float('total_pension', 10,2); // 
+            $table->float('total_recovery', 10,2);
+            $table->float('net_pension', 10,2);
+            $table->string('remarks', 255);  //  Remarks (expiry or other notes)
+            $table->enum('status', ['Pending','Processed','Paid'])->default('Pending');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('monthly_pensions');
+    }
+};
