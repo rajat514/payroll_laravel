@@ -36,11 +36,16 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('employee-status', \App\Http\Controllers\Api\EmployeeStatusController::class)->except(['index', 'destroy']);
 
     Route::apiResource('employee-bank', \App\Http\Controllers\Api\EmployeeBankController::class)->except('destroy');
+    
     Route::get('/employee-bank-status/{id}', [\App\Http\Controllers\Api\EmployeeBankController::class, 'changeStatus']);
 
     Route::apiResource('employee-designation', \App\Http\Controllers\Api\EmployeeDesignationController::class)->except('destroy');
 
     Route::apiResource('employee-quarters', \App\Http\Controllers\Api\EmployeeQuarterController::class)->except('destroy');
+
+    Route::apiResource('pensioner', \App\Http\Controllers\Api\PensionerController::class)->only('index', 'show', 'store', 'update');
+
+    Route::post('pensioner-status/{id}', [\App\Http\Controllers\Api\PensionerController::class, 'changeStatus']);
 
     Route::apiResource('pay-matrix-levels', \App\Http\Controllers\Api\PayMatrixLevelController::class)->except(['destroy,show']);
 
