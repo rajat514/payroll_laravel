@@ -22,6 +22,8 @@ return new class extends Migration
             $table->integer('current_installment');
             $table->float('remaining_balance', 12, 2);
             $table->boolean('is_active')->default(1);
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

@@ -33,6 +33,8 @@ return new class extends Migration
             $table->string('pin_code', 10);
             $table->string('mobile_no', 15);
             $table->string('email', 100);
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamps();
         });
     }

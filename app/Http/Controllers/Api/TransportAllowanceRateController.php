@@ -43,6 +43,7 @@ class TransportAllowanceRateController extends Controller
         $transportAllowance->effective_from = $request['effective_from'];
         $transportAllowance->effective_till = $request['effective_till'];
         $transportAllowance->notification_ref = $request['notification_ref'];
+        $transportAllowance->added_by = auth()->id();
 
         try {
             $transportAllowance->save();
@@ -75,6 +76,7 @@ class TransportAllowanceRateController extends Controller
         $transportAllowance->effective_from = $request['effective_from'];
         $transportAllowance->effective_till = $request['effective_till'];
         $transportAllowance->notification_ref = $request['notification_ref'];
+        $transportAllowance->edited_by = auth()->id();
 
         try {
             $transportAllowance->save();

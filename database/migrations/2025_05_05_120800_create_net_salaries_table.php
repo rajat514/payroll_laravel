@@ -13,11 +13,16 @@ return new class extends Migration
     {
         Schema::create('net_salaries', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('pay_slip_id')->constrained();
-            $table->foreignId('deduction_id')->constrained();
+            $table->foreignId('employee_id')->constrained();
+            $table->integer('month');
+            $table->integer('year');
+            $table->date('processing_date');
             $table->float('net_amount', 12, 2);
             $table->date('payment_date');
             $table->foreignId('employee_bank_id')->constrained('employee_bank_accounts');
+            $table->foreignId('varified_by')->constrained('users');
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

@@ -13,10 +13,7 @@ return new class extends Migration
     {
         Schema::create('pay_slips', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained();
-            $table->integer('month');
-            $table->integer('year');
-            $table->date('processing_date');
+            $table->foreignId('net_salary_id')->constrained('net_salaries');
             $table->foreignId('pay_structure_id')->constrained('employee_pay_structures');
             $table->float('basic_pay', 12, 2);
             $table->foreignId('da_rate_id')->constrained('dearnes_allowance_rates');
@@ -38,6 +35,8 @@ return new class extends Migration
             $table->float('da_2', 10, 2)->nullable();
             $table->float('itc_leave_salary', 10, 2)->nullable();
             $table->float('total_pay', 12, 2);
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

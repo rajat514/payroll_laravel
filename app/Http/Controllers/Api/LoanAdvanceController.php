@@ -52,6 +52,7 @@ class LoanAdvanceController extends Controller
         $loanAdvance->current_installment = $request['current_installment'];
         $loanAdvance->remaining_balance = $request['remaining_balance'];
         $loanAdvance->is_active = $request['is_active'];
+        $loanAdvance->added_by = auth()->id();
 
         try {
             $loanAdvance->save();
@@ -88,6 +89,7 @@ class LoanAdvanceController extends Controller
         $loanAdvance->current_installment = $request['current_installment'];
         $loanAdvance->remaining_balance = $request['remaining_balance'];
         $loanAdvance->is_active = $request['is_active'];
+        $loanAdvance->edited_by = auth()->id();
 
         try {
             $loanAdvance->save();

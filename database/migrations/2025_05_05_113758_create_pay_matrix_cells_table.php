@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('matrix_level_id')->constrained('pay_matrix_levels');
             $table->integer('index');
             $table->float('amount', 30, 2);
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

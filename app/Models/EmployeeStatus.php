@@ -16,7 +16,8 @@ class EmployeeStatus extends Model
         'effective_from',
         'effective_till',
         'remarks',
-        'order_reference'
+        'order_reference',
+        'added_by'
     ];
 
     public function employee(): BelongsTo

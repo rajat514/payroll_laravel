@@ -20,6 +20,8 @@ return new class extends Migration
             $table->date('effective_from');
             $table->date('effective_till')->nullable();
             $table->string('notification_ref', 50)->nullable();
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

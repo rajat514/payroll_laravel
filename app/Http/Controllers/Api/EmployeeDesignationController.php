@@ -54,6 +54,7 @@ class EmployeeDesignationController extends Controller
         $employeeDesignation->effective_from = $request['effective_from'];
         $employeeDesignation->effective_till = $request['effective_till'];
         $employeeDesignation->promotion_order_no = $request['promotion_order_no'];
+        $employeeDesignation->added_by = auth()->id();
 
         try {
             $employeeDesignation->save();
@@ -86,6 +87,7 @@ class EmployeeDesignationController extends Controller
         $employeeDesignation->effective_from = $request['effective_from'];
         $employeeDesignation->effective_till = $request['effective_till'];
         $employeeDesignation->promotion_order_no = $request['promotion_order_no'];
+        $employeeDesignation->edited_by = auth()->id();
 
         try {
             $employeeDesignation->save();

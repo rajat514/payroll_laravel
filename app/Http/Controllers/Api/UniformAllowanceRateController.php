@@ -39,6 +39,7 @@ class UniformAllowanceRateController extends Controller
         $uniformAllowance->effective_from = $request['effective_from'];
         $uniformAllowance->effective_till = $request['effective_till'];
         $uniformAllowance->notification_ref = $request['notification_ref'];
+        $uniformAllowance->added_by = auth()->id();
 
         try {
             $uniformAllowance->save();
@@ -67,6 +68,7 @@ class UniformAllowanceRateController extends Controller
         $uniformAllowance->effective_from = $request['effective_from'];
         $uniformAllowance->effective_till = $request['effective_till'];
         $uniformAllowance->notification_ref = $request['notification_ref'];
+        $uniformAllowance->edited_by = auth()->id();
 
         try {
             $uniformAllowance->save();

@@ -72,6 +72,7 @@ class EmployeeBankController extends Controller
         $employeeBank->ifsc_code = $request['ifsc_code'];
         $employeeBank->effective_from = $request['effective_from'];
         $employeeBank->is_active = $request['is_active'];
+        $employeeBank->added_by = auth()->id();
 
         try {
             $employeeBank->save();
@@ -106,6 +107,7 @@ class EmployeeBankController extends Controller
         $employeeBank->ifsc_code = $request['ifsc_code'];
         $employeeBank->effective_from = $request['effective_from'];
         $employeeBank->is_active = $request['is_active'];
+        $employeeBank->edited_by = auth()->id();
 
         try {
             $employeeBank->save();

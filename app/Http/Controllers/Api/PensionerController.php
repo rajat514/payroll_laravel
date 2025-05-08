@@ -16,10 +16,10 @@ class PensionerController extends Controller
     public function index()
     {
         $persioner = PensionerInformation::with('employee')->get();
-        return response()->json([ 
-            'message' => 'Fetch pensioner data successfully', 
+        return response()->json([
+            'message' => 'Fetch pensioner data successfully',
             'data' => $persioner
-        ],200);
+        ], 200);
     }
 
     /**
@@ -60,8 +60,8 @@ class PensionerController extends Controller
 
 
         $employeeStatus = EmployeeStatus::where('employee_id', $request['retired_employee_id'])
-        ->where('status', 'Retired')                
-        ->first();
+            ->where('status', 'Retired')
+            ->first();
 
         // Check if employee exists and is retired
         if (!$employeeStatus || $employeeStatus->status !== 'Retired') {
@@ -91,19 +91,19 @@ class PensionerController extends Controller
         $pensioner->pin_code = $request['pin_code'];
         $pensioner->mobile_no = $request['mobile_no'];
         $pensioner->email = $request['email'];
+        $pensioner->added_by = auth()->id();
 
-        try{
+        try {
             $pensioner->save();
             return response()->json([
                 'message' => 'Pensioner detail create successfully!',
                 'data' => $pensioner
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-            ],500);
+            ], 500);
         }
-
     }
 
     /**
@@ -113,7 +113,7 @@ class PensionerController extends Controller
     {
         $pensioner = PensionerInformation::with('employee')->find($id);
 
-        if(!$pensioner) return response()->json(['message' => 'Pensioner data not found!'],404);
+        if (!$pensioner) return response()->json(['message' => 'Pensioner data not found!'], 404);
 
         return response()->json([
             'message' => 'Fetch pensioner data successfully',
@@ -136,7 +136,7 @@ class PensionerController extends Controller
     {
         $pensioner = PensionerInformation::find($id);
 
-        if(!$pensioner) return response()->json(['message' => 'Pensioner data not found!'],404);
+        if (!$pensioner) return response()->json(['message' => 'Pensioner data not found!'], 404);
 
         $request->validate([
             'ppo_no' => 'required|string|max:20',
@@ -162,8 +162,8 @@ class PensionerController extends Controller
         ]);
 
         $employeeStatus = EmployeeStatus::where('employee_id', $request['retired_employee_id'])
-        ->where('status', 'Retired')                
-        ->first();
+            ->where('status', 'Retired')
+            ->first();
 
         // Check if employee exists and is retired
         if (!$employeeStatus || $employeeStatus->status !== 'Retired') {
@@ -192,17 +192,18 @@ class PensionerController extends Controller
         $pensioner->pin_code = $request['pin_code'];
         $pensioner->mobile_no = $request['mobile_no'];
         $pensioner->email = $request['email'];
+        $pensioner->edited_by = auth()->id();
 
-        try{
+        try {
             $pensioner->save();
             return response()->json([
                 'message' => 'Pensioner detail updated successfully!',
                 'data' => $pensioner
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-            ],500);
+            ], 500);
         }
     }
 
@@ -218,25 +219,25 @@ class PensionerController extends Controller
     {
         $pensioner = PensionerInformation::find($id);
 
-        if(!$pensioner) return response()->json(['message' => 'Pensioner data not found!'],404);
+        if (!$pensioner) return response()->json(['message' => 'Pensioner data not found!'], 404);
 
         $request->validate([
             'status' => 'required|in:Active,Expired,Suspended'
         ]);
-        
+
 
         $pensioner->status = $request['status'];
 
-        try{
+        try {
             $pensioner->save();
             return response()->json([
                 'message' => 'Pensioner status change successfully!',
                 'data' => $pensioner
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-            ],500);
+            ], 500);
         }
     }
 }

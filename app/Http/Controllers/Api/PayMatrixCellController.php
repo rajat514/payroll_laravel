@@ -35,6 +35,7 @@ class PayMatrixCellController extends Controller
         $payMatrixCell->matrix_level_id = $request['matrix_level_id'];
         $payMatrixCell->index = $request['index'];
         $payMatrixCell->amount = $request['amount'];
+        $payMatrixCell->added_by = auth()->id();
 
         try {
             $payMatrixCell->save();
@@ -59,6 +60,7 @@ class PayMatrixCellController extends Controller
         $payMatrixCell->matrix_level_id = $request['matrix_level_id'];
         $payMatrixCell->index = $request['index'];
         $payMatrixCell->amount = $request['amount'];
+        $payMatrixCell->edited_by = auth()->id();
         try {
             $payMatrixCell->save();
 

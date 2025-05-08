@@ -21,7 +21,6 @@ class EmployeeStatusController extends Controller
         ]);
 
         $employee = EmployeeStatus::where('employee_id', $request['employee_id'])->get()->last();
-        // $employeePreviousStatus = $employee[]
         $employee->effective_till = $request['effective_from'];
 
         try {
@@ -37,6 +36,7 @@ class EmployeeStatusController extends Controller
         $employeeStatus->effective_till = $request['effective_till'];
         $employeeStatus->remarks = $request['remarks'];
         $employeeStatus->order_reference = $request['order_reference'];
+        $employeeStatus->added_by = auth()->id();
 
         try {
             $employeeStatus->save();
@@ -68,6 +68,7 @@ class EmployeeStatusController extends Controller
         $employeeStatus->effective_till = $request['effective_till'];
         $employeeStatus->remarks = $request['remarks'];
         $employeeStatus->order_reference = $request['order_reference'];
+        $employeeStatus->edited_by = auth()->id();
 
         try {
             $employeeStatus->save();

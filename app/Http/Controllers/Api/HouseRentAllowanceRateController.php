@@ -39,6 +39,7 @@ class HouseRentAllowanceRateController extends Controller
         $houseRentAllowance->effective_from = $request['effective_from'];
         $houseRentAllowance->effective_till = $request['effective_till'];
         $houseRentAllowance->notification_ref = $request['notification_ref'];
+        $houseRentAllowance->added_by = auth()->id();
 
         try {
             $houseRentAllowance->save();
@@ -67,6 +68,7 @@ class HouseRentAllowanceRateController extends Controller
         $houseRentAllowance->effective_from = $request['effective_from'];
         $houseRentAllowance->effective_till = $request['effective_till'];
         $houseRentAllowance->notification_ref = $request['notification_ref'];
+        $houseRentAllowance->edited_by = auth()->id();
 
         try {
             $houseRentAllowance->save();

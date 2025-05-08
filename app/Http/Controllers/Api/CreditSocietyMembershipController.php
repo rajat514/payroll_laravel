@@ -55,6 +55,7 @@ class CreditSocietyMembershipController extends Controller
         $creditSocietyMembership->is_active = $request['is_active'];
         $creditSocietyMembership->effective_from = $request['effective_from'];
         $creditSocietyMembership->effective_till = $request['effective_till'];
+        $creditSocietyMembership->added_by = auth()->id();
         $creditSocietyMembership->remark = $request['remark'];
 
         try {
@@ -95,6 +96,7 @@ class CreditSocietyMembershipController extends Controller
         $creditSocietyMembership->is_active = $request['is_active'];
         $creditSocietyMembership->effective_from = $request['effective_from'];
         $creditSocietyMembership->effective_till = $request['effective_till'];
+        $creditSocietyMembership->edited_by = auth()->id();
         $creditSocietyMembership->remark = $request['remark'];
 
         try {

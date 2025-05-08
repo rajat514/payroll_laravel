@@ -39,6 +39,7 @@ class DearnessAllowanceRateController extends Controller
         $dearnessAllowance->effective_from = $request['effective_from'];
         $dearnessAllowance->effective_till = $request['effective_till'];
         $dearnessAllowance->notification_ref = $request['notification_ref'];
+        $dearnessAllowance->added_by = auth()->id();
 
         try {
             $dearnessAllowance->save();
@@ -67,6 +68,7 @@ class DearnessAllowanceRateController extends Controller
         $dearnessAllowance->effective_from = $request['effective_from'];
         $dearnessAllowance->effective_till = $request['effective_till'];
         $dearnessAllowance->notification_ref = $request['notification_ref'];
+        $dearnessAllowance->edited_by = auth()->id();
 
         try {
             $dearnessAllowance->save();

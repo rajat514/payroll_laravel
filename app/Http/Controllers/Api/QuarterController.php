@@ -14,7 +14,7 @@ class QuarterController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    function store(Request $request) 
+    function store(Request $request)
     {
         $request->validate([
             'quarter_no' => 'required|string|max:191',
@@ -26,6 +26,7 @@ class QuarterController extends Controller
         $quarter->quarter_no = $request['quarter_no'];
         $quarter->type = $request['type'];
         $quarter->license_fee = $request['license_fee'];
+        $quarter->added_by = auth()->id();
 
         try {
             $quarter->save();
@@ -38,7 +39,7 @@ class QuarterController extends Controller
         }
     }
 
-    function update(Request $request, $id) 
+    function update(Request $request, $id)
     {
         $quarter = Quarter::find($id);
         if (!$quarter) return response()->json(['errorMsg' => 'Quarter Not Found!'], 404);
@@ -52,6 +53,7 @@ class QuarterController extends Controller
         $quarter->quarter_no = $request['quarter_no'];
         $quarter->type = $request['type'];
         $quarter->license_fee = $request['license_fee'];
+        $quarter->edited_by = auth()->id();
 
         try {
             $quarter->save();

@@ -46,6 +46,7 @@ class EmployeePayStructureController extends Controller
         $payStructure->effective_from = $request['effective_from'];
         $payStructure->effective_till = $request['effective_till'];
         $payStructure->order_reference = $request['order_reference'];
+        $payStructure->added_by = auth()->id();
 
         try {
             $payStructure->save();
@@ -75,6 +76,7 @@ class EmployeePayStructureController extends Controller
         $payStructure->effective_from = $request['effective_from'];
         $payStructure->effective_till = $request['effective_till'];
         $payStructure->order_reference = $request['order_reference'];
+        $payStructure->edited_by = auth()->id();
 
         try {
             $payStructure->save();

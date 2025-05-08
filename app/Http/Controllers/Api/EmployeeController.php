@@ -15,7 +15,7 @@ class EmployeeController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $data = Employee::query();
+        $data = Employee::with('addby:id,name,role_id', 'editby:id,name,role_id');
 
         $data->when(
             request('search'),
@@ -96,6 +96,7 @@ class EmployeeController extends Controller
         $employee->uniform_allowance_eligibility = $request['uniform_allowance_eligibility'];
         $employee->hra_eligibility = $request['hra_eligibility'];
         $employee->npa_eligibility = $request['npa_eligibility'];
+        $employee->added_by = auth()->id();
 
         try {
             $employee->save();
@@ -105,7 +106,8 @@ class EmployeeController extends Controller
                 'effective_from' => $request['effective_from'],
                 'effective_till' => $request['effective_till'],
                 'remarks' => $request['remarks'],
-                'order_reference' => $request['order_reference']
+                'order_reference' => $request['order_reference'],
+                'added_by' => auth()->id()
             ]);
             return response()->json([
                 'successMsg' => 'Employee Created!',
@@ -170,6 +172,7 @@ class EmployeeController extends Controller
         $employee->uniform_allowance_eligibility = $request['uniform_allowance_eligibility'];
         $employee->hra_eligibility = $request['hra_eligibility'];
         $employee->npa_eligibility = $request['npa_eligibility'];
+        $employee->edited_by = auth()->id();
 
         try {
             $employee->save();
@@ -200,7 +203,9 @@ class EmployeeController extends Controller
         $data = Employee::with(
             'employeeStatus:id,employee_id,status,effective_from,effective_till',
             'employeeBank',
-            'employeeDesignation'
+            'employeeDesignation',
+            'addby:id,name,role_id',
+            'editby:id,name,role_id'
         )->find($id);
         if (!$data) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 

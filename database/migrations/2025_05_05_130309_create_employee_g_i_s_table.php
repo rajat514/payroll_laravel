@@ -18,6 +18,8 @@ return new class extends Migration
             $table->float('monthly_subscription', 8, 2);
             $table->date('effective_from');
             $table->date('effective_till')->nullable();
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

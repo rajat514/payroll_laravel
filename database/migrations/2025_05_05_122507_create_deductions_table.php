@@ -13,8 +13,7 @@ return new class extends Migration
     {
         Schema::create('deductions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained();
-            $table->foreignId('pay_slip_id')->constrained();
+            $table->foreignId('net_salary_id')->constrained('net_salaries');
             $table->float('income_tax', 10, 2);
             $table->float('professional_tax', 10, 2);
             $table->float('license_fee', 10, 2);
@@ -36,6 +35,8 @@ return new class extends Migration
             $table->float('lic', 10, 2);
             $table->float('credit_society', 10, 2);
             $table->float('total_deductions', 10, 2);
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

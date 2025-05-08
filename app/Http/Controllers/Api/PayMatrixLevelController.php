@@ -33,6 +33,7 @@ class PayMatrixLevelController extends Controller
         $payMatrixLevel = new PayMatrixLevel();
         $payMatrixLevel->name = $request['name'];
         $payMatrixLevel->description = $request['description'];
+        $payMatrixLevel->added_by = auth()->id();
 
         try {
             $payMatrixLevel->save();
@@ -55,6 +56,7 @@ class PayMatrixLevelController extends Controller
 
         $payMatrixLevel->name = $request['name'];
         $payMatrixLevel->description = $request['description'];
+        $payMatrixLevel->edited_by = auth()->id();
 
         try {
             $payMatrixLevel->save();

@@ -39,6 +39,7 @@ class NonPracticingAllowanceRateController extends Controller
         $nPAllowance->effective_from = $request['effective_from'];
         $nPAllowance->effective_till = $request['effective_till'];
         $nPAllowance->notification_ref = $request['notification_ref'];
+        $nPAllowance->added_by = auth()->id();
 
         try {
             $nPAllowance->save();
@@ -67,6 +68,7 @@ class NonPracticingAllowanceRateController extends Controller
         $nPAllowance->effective_from = $request['effective_from'];
         $nPAllowance->effective_till = $request['effective_till'];
         $nPAllowance->notification_ref = $request['notification_ref'];
+        $nPAllowance->edited_by = auth()->id();
 
         try {
             $nPAllowance->save();

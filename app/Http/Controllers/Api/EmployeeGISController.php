@@ -44,6 +44,7 @@ class EmployeeGISController extends Controller
         $employeeGIS->monthly_subscription = $request['monthly_subscription'];
         $employeeGIS->effective_from = $request['effective_from'];
         $employeeGIS->effective_till = $request['effective_till'];
+        $employeeGIS->added_by = auth()->id();
 
         try {
             $employeeGIS->save();
@@ -72,6 +73,7 @@ class EmployeeGISController extends Controller
         $employeeGIS->monthly_subscription = $request['monthly_subscription'];
         $employeeGIS->effective_from = $request['effective_from'];
         $employeeGIS->effective_till = $request['effective_till'];
+        $employeeGIS->edited_by = auth()->id();
 
         try {
             $employeeGIS->save();

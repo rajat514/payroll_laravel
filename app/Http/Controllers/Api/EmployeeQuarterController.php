@@ -57,6 +57,7 @@ class EmployeeQuarterController extends Controller
         $employeeQuarter->date_of_leaving = $request['date_of_leaving'];
         $employeeQuarter->is_current = $request['is_current'];
         $employeeQuarter->order_reference = $request['order_reference'];
+        $employeeQuarter->added_by = auth()->id();
 
         try {
             $employeeQuarter->save();
@@ -91,6 +92,7 @@ class EmployeeQuarterController extends Controller
         $employeeQuarter->date_of_leaving = $request['date_of_leaving'];
         $employeeQuarter->is_current = $request['is_current'];
         $employeeQuarter->order_reference = $request['order_reference'];
+        $employeeQuarter->edited_by = auth()->id();
 
         try {
             $employeeQuarter->save();

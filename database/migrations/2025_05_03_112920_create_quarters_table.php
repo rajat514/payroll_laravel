@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('quarter_no');
             $table->enum('type', ['B', 'C']);
             $table->string('license_fee');
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
