@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('arrears', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('pensioner_id')->constrained('pensioner_information');
+            $table->date('from_month');
+            $table->date('to_month');
+            $table->date('payment_month');
+            $table->float('basic_arrear', 10,2);
+            $table->float('additional_arrear', 10,2);
+            $table->float('dr_percentage', 5,2);
+            $table->float('dr_arrear', 10,2);
+            $table->float('total_arrear', 10,2);
+            $table->string('remarks',255);
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('arrears');
+    }
+};

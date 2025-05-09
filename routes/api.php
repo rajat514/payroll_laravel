@@ -80,6 +80,10 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('dearness-relief', \App\Http\Controllers\Api\DearnessReliefController::class)->only('index', 'show', 'store', 'update');
 
     Route::apiResource('bank-account', \App\Http\Controllers\Api\BankAccountController::class)->only('index', 'show', 'store', 'update');
+
+    Route::apiResource('pension-deduction', \App\Http\Controllers\Api\PensionDeductionController::class)->only('index','store', 'update');
+
+    Route::apiResource('arrears', \App\Http\Controllers\Api\ArrearsController::class)->only('index','store', 'update');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
