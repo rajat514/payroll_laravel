@@ -13,7 +13,7 @@ class PensionDeductionController extends Controller
      */
     public function index()
     {
-        $data = PensionDeduction::with('pension')->get();
+        $data = PensionDeduction::with('monthlyPension')->get();
         return response()->json([
             'message' => 'Fetch deduction data successfull!',
             'data' => $data
@@ -34,7 +34,7 @@ class PensionDeductionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'pension_id' => 'required|exists:pensioner_information,id',
+            'pension_id' => 'required|exists:monthly_pensions,id',
             'deduction_type' => 'required|in:Income Tax,Recovery,Other',
             'amount' => 'required|numeric',
             'description' => 'string'
@@ -84,7 +84,7 @@ class PensionDeductionController extends Controller
         if(!$data) return response()->json(['message' => 'Pension deduction not found!'],404);
 
         $request->validate([
-            'pension_id' => 'required|exists:pensioner_information,id',
+            'pension_id' => 'required|exists:monthly_pensions,id',
             'deduction_type' => 'required|in:Income Tax,Recovery,Other',
             'amount' => 'required|numeric',
             'description' => 'string'

@@ -27,4 +27,10 @@ class MonthlyPension extends Model
     {
         return $this->belongsTo(\App\Models\DearnessRelief::class);
     }
+
+    public function dedcution()
+    {
+        return $this->hasMany(\App\Models\PensionDeduction::class);
+    }
+
 }

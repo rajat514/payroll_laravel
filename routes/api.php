@@ -84,6 +84,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('pension-deduction', \App\Http\Controllers\Api\PensionDeductionController::class)->only('index','store', 'update');
 
     Route::apiResource('arrears', \App\Http\Controllers\Api\ArrearsController::class)->only('index','store', 'update');
+
+    Route::apiResource('pension-documents', \App\Http\Controllers\Api\PensionDocumentController::class)->only('index','store', 'update');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
