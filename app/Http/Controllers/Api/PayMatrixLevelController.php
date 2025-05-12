@@ -26,7 +26,7 @@ class PayMatrixLevelController extends Controller
     function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|min:3|max:30',
+            'name' => 'required|string',
             'description' => 'required|string|min:3|max:191'
         ]);
 

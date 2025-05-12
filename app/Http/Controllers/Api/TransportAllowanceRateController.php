@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmployeeTransportAllowance;
 use App\Models\TransportAllowanceRate;
 use Illuminate\Http\Request;
 
@@ -14,7 +15,7 @@ class TransportAllowanceRateController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = TransportAllowanceRate::query();
+        $query = EmployeeTransportAllowance::query();
 
         $total_count = $query->count();
 
@@ -26,23 +27,13 @@ class TransportAllowanceRateController extends Controller
     function store(Request $request)
     {
         $request->validate([
-            'city_class' => 'required|in:X,Y,Z',
-            'pwd_applicable' => 'boolean|in:1,0',
-            'transport_type' => 'required|in:Type1,Type2,Type3,Type4',
+            'pay_level' => 'required|string',
             'amount' => 'required|numeric',
-            'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
-            'notification_ref' => 'nullable|string'
         ]);
 
-        $transportAllowance = new TransportAllowanceRate();
-        $transportAllowance->city_class = $request['city_class'];
-        $transportAllowance->pwd_applicable = $request['pwd_applicable'];
-        $transportAllowance->transport_type = $request['transport_type'];
+        $transportAllowance = new EmployeeTransportAllowance();
+        $transportAllowance->pay_level = $request['pay_level'];
         $transportAllowance->amount = $request['amount'];
-        $transportAllowance->effective_from = $request['effective_from'];
-        $transportAllowance->effective_till = $request['effective_till'];
-        $transportAllowance->notification_ref = $request['notification_ref'];
         $transportAllowance->added_by = auth()->id();
 
         try {
@@ -56,32 +47,25 @@ class TransportAllowanceRateController extends Controller
 
     function update(Request $request, $id)
     {
-        $transportAllowance = TransportAllowanceRate::find($id);
+
+        $transportAllowance = EmployeeTransportAllowance::find($id);
         if (!$transportAllowance) return response()->json(['errorMsg' => 'Transport Allowance Rate not found!'], 404);
 
         $request->validate([
-            'city_class' => 'required|in:X,Y,Z',
-            'pwd_applicable' => 'boolean|in:1,0',
-            'transport_type' => 'required|in:Type1,Type2,Type3,Type4',
+            'pay_level' => 'required|string',
             'amount' => 'required|numeric',
-            'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
-            'notification_ref' => 'nullable|string'
         ]);
 
-        $transportAllowance->city_class = $request['city_class'];
-        $transportAllowance->pwd_applicable = $request['pwd_applicable'];
-        $transportAllowance->transport_type = $request['transport_type'];
+
+        $transportAllowance->pay_level = $request['pay_level'];
         $transportAllowance->amount = $request['amount'];
-        $transportAllowance->effective_from = $request['effective_from'];
-        $transportAllowance->effective_till = $request['effective_till'];
-        $transportAllowance->notification_ref = $request['notification_ref'];
+        $transportAllowance->added_by = auth()->id();
         $transportAllowance->edited_by = auth()->id();
 
         try {
             $transportAllowance->save();
 
-            return response()->json(['successMsg' => 'Transport Allowance Rate Created!', 'data' => $transportAllowance]);
+            return response()->json(['successMsg' => 'Transport Allowance Rate Updated!', 'data' => $transportAllowance]);
         } catch (\Exception $e) {
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }

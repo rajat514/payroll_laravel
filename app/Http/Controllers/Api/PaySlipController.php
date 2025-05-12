@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
+use App\Models\EmployeePayStructure;
+use App\Models\EmployeeTransportAllowance;
 use App\Models\NetSalary;
 use App\Models\PaySlip;
 use Illuminate\Http\Request;
@@ -55,6 +58,35 @@ class PaySlipController extends Controller
             'itc_leave_salary' => 'nullable|numeric',
             'total_pay' => 'nullable|numeric',
         ]);
+
+        $net_salary = NetSalary::find($request['net_salary_id']);
+        if (!$net_salary) return response()->json(['errorMsg' => 'Net Salary not found!'], 404);
+
+        $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($request['pay_structure_id']);
+        if (!$employeePayStructure) {
+            return response()->json(['errorMsg' => 'Employee Pay Structure not found!'], 404);
+        }
+        if ($net_salary->employee_id != $employeePayStructure->employee_id) {
+            return response()->json(['errorMsg' => 'Employee Net Salary and Employee Pay Structure not matched!']);
+        }
+        $payMatrixLevel = $employeePayStructure->payMatrixCell->payMatrixLevel;
+        $basicPay = $employeePayStructure->PayMatrixCell->amount;
+
+        $taRate = EmployeeTransportAllowance::where('pay_level', $payMatrixLevel->name)->get();
+        // if (!$taRate->length) {
+        //     return response()->json(['errorMsg' => 'Employee Pay structure', 'data' => $taRate]);
+        // }
+
+        $employee = Employee::find($net_salary->employee_id);
+        if (!$employee) return response()->json(['errorMsg' => 'Employee not found!'], 404);
+
+        if ($employee->pwd_status) {
+            $basicPay += 2 * $taRate[0]->amount;
+        } else {
+            $basicPay += $taRate[0]->amount;
+        }
+        return response()->json(['errorMsg' => 'Employee Pay structure', 'data' => $basicPay, 'data 1' => $employeePayStructure->payMatrixCell->amount]);
+
 
         $salaryPay = new PaySlip();
         $salaryPay->net_salary_id = $request['net_salary_id'];

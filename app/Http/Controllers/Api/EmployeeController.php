@@ -137,7 +137,7 @@ class EmployeeController extends Controller
                 'pension_number' => 'nullable|string|min:2|max:191',
                 'gis_no' => 'nullable|string|min:2|max:191',
                 'credit_society_member' => 'required|in:1,0',
-                'email' => 'required|email|max:191|unique:employees,email',
+                'email' => "required|email|max:191|unique:employees,email,$id,id",
                 // 'pancard' => 'required|regex:/^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$/|unique:employees,pancard',
                 'increment_month' => 'nullable|string',
                 'uniform_allowance_eligibility' => 'required|in:1,0',
@@ -145,6 +145,7 @@ class EmployeeController extends Controller
                 'npa_eligibility' => 'required|in:1,0',
                 'pancard' => [
                     'required',
+                    "unique:employees,pancard,$id,id",
                     'regex:/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/'
                 ]
             ],

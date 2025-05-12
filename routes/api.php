@@ -21,11 +21,11 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/user', [\App\Http\Controllers\Api\UserController::class, 'user']);
 
     Route::get('/users', [\App\Http\Controllers\Api\UserController::class, 'index']);
-    
+
     Route::get('/user-status/{id}', [\App\Http\Controllers\Api\UserController::class, 'changeStatus']);
-    
+
     Route::post('/user', [\App\Http\Controllers\Api\UserController::class, 'store']);
-    
+
     Route::post('/user/{id}', [\App\Http\Controllers\Api\UserController::class, 'update']);
 
     // Route::get('/quarters', [\App\Http\Controllers\Api\QuarterController::class, 'index']);
@@ -81,11 +81,13 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::apiResource('bank-account', \App\Http\Controllers\Api\BankAccountController::class)->only('index', 'show', 'store', 'update');
 
-    Route::apiResource('pension-deduction', \App\Http\Controllers\Api\PensionDeductionController::class)->only('index','store', 'update');
+    Route::apiResource('pension-deduction', \App\Http\Controllers\Api\PensionDeductionController::class)->only('index', 'store', 'update');
 
-    Route::apiResource('arrears', \App\Http\Controllers\Api\ArrearsController::class)->only('index','store', 'update');
+    Route::apiResource('arrears', \App\Http\Controllers\Api\ArrearsController::class)->only('index', 'store', 'update');
 
-    Route::apiResource('pension-documents', \App\Http\Controllers\Api\PensionDocumentController::class)->only('index','store', 'update');
+    Route::apiResource('pension-documents', \App\Http\Controllers\Api\PensionDocumentController::class)->only('index', 'store', 'update');
+
+    Route::apiResource('employee-pay-slip', \App\Http\Controllers\Api\PaySlipController::class)->only('index', 'store', 'update');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
