@@ -13,7 +13,7 @@ class PensionDocumentController extends Controller
      */
     public function index()
     {
-        $data = PensionerDocuments::with('pension')->get();
+        $data = PensionerDocuments::with('pensioner')->get();
         return response()->json([
             'message' => 'Fetch pension document data successfully!',
             'data' => $data
@@ -35,23 +35,23 @@ class PensionDocumentController extends Controller
     {
         $fileName = '';
         $request->validate([
-            'pension_id' => 'required|exists:pensioner_information,id',
-            'deduction_type' => 'required|in:PAN Card,Address Proof,Bank Details,Retirement Order,Life Certificate',
+            'pensioner_id' => 'required|exists:pensioner_information,id',
+            'document_type' => 'required|in:PAN Card,Address Proof,Bank Details,Retirement Order,Life Certificate',
             'document_number' => 'required|max:50',
             'issue_date' => 'required|date',
             'expiry_date' => 'nullable|date',
-            'file_path' => 'required|mimes:pdf|max:2048'
+            'file' => 'required|mimes:pdf|max:2048'
         ]);
 
-        if ($request->hasFile('file_path')) {
-            $file = $request->file('file_path');
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
             $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
             $file->move(public_path('uploads/pension'), $fileName);
         }
 
         $data = new PensionerDocuments();
-        $data->pension_id = $request['pension_id'];
-        $data->deduction_type = $request['deduction_type'];
+        $data->pensioner_id = $request['pensioner_id'];
+        $data->document_type = $request['document_type'];
         $data->document_number = $request['document_number'];
         $data->issue_date = $request['issue_date'];
         $data->expiry_date = $request['expiry_date'];
@@ -88,7 +88,46 @@ class PensionDocumentController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
+        $data = PensionerDocuments::find($id);
+        if(!$data) return response()->json([
+            'message' => 'Pensioner Document not found!'
+        ],404);
+
+        $request->validate([
+            'pensioner_id' => 'required|exists:pensioner_information,id',
+            'document_type' => 'required|in:PAN Card,Address Proof,Bank Details,Retirement Order,Life Certificate',
+            'document_number' => 'required|max:50',
+            'issue_date' => 'required|date',
+            'expiry_date' => 'nullable|date',
+            'file' => 'required|mimes:pdf|max:2048'
+        ]);
+        
+        // Delete previous file if exists
+        if ($data->file_path && file_exists(public_path($data->file_path))) {
+            unlink(public_path($data->file_path));
+        }
+
+        $fileName = '';
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/pension'), $fileName);
+        }
+
+        $data->pensioner_id = $request['pensioner_id'];
+        $data->document_type = $request['document_type'];
+        $data->document_number = $request['document_number'];
+        $data->issue_date = $request['issue_date'];
+        $data->expiry_date = $request['expiry_date'];
+        $data->file_path = 'uploads/pension/' . $fileName;
+        $data->upload_date = now();
+
+        try{
+            $data->save();
+            return response()->json(['message' => 'Document updated successfully', 'data' => $data], 201);
+        }catch(\Exception $e){
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 
     /**

@@ -53,4 +53,34 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\BankAccount::class);
     }
+
+    public function pensionerInformation(): HasMany
+    {
+        return $this->hasMany(\App\Models\PensionerInformation::class);
+    }
+
+    public function dearnessRelief(): HasMany
+    {
+        return $this->hasMany(\App\Models\DearnessRelief::class);
+    }
+
+    public function monthlyPension(): HasMany
+    {
+        return $this->hasMany(\App\Models\MonthlyPension::class);
+    }
+
+    public function pensionerDeduction(): HasMany
+    {
+        return $this->hasMany(\App\Models\PensionDeduction::class);
+    }
+
+    public function arrears(): HasMany
+    {
+        return $this->hasMany(\App\Models\Arrears::class);
+    }
+
+    public function pensionerDocument(): HasMany
+    {
+        return $this->hasMany(\App\Models\PensionerDocuments::class);
+    }
 }

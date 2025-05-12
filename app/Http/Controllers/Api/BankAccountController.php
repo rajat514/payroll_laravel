@@ -62,11 +62,7 @@ class BankAccountController extends Controller
         $bank->account_no = $request['account_no'];
         $bank->ifsc_code = $request['ifsc_code'];
         $bank->is_active = $request['is_active'];
-        $user = Auth::user();
-
-        if($user){
-            $bank->added_by = $user->id;
-        }
+        $bank->added_by = auth()->id();
 
 
         try{
@@ -95,11 +91,7 @@ class BankAccountController extends Controller
         ],404);
 
         $bank->is_active === 0 ? $bank->is_active = 1 : $bank->is_active = 0;
-        $user = Auth::user();
-
-        if($user){
-            $bank->edited_by = $user->id;
-        }
+        $bank->edited_by = auth()->id();
         
         try{
             $bank->update();
@@ -160,12 +152,8 @@ class BankAccountController extends Controller
         $bank->account_no = $request['account_no'];
         $bank->ifsc_code = $request['ifsc_code'];
         $bank->is_active = $request['is_active'];
-
-        $user = Auth::user();
-
-        if($user){
-            $bank->edited_by = $user->id;
-        }
+        $bank->edited_by = auth()->id();
+        
 
 
         try{

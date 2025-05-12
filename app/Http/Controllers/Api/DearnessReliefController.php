@@ -43,6 +43,7 @@ class DearnessReliefController extends Controller
         $data->effective_from = $request['effective_from'];
         $data->effective_to = $request['effective_to'];
         $data->dr_percentage = $request['dr_percentage'];
+        $data->added_by = auth()->id();
 
         try{
             $data->save();
@@ -92,6 +93,7 @@ class DearnessReliefController extends Controller
         $data->effective_from = $request['effective_from'];
         $data->effective_to = $request['effective_to'];
         $data->dr_percentage = $request['dr_percentage'];
+        $data->edited_by = auth()->id();
 
         try{
             $data->save();

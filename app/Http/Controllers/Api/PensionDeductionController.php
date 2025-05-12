@@ -45,6 +45,7 @@ class PensionDeductionController extends Controller
         $data->deduction_type = $request['deduction_type'];
         $data->amount = $request['amount'];
         $data->description = $request['description'];
+        $data->added_by = auth()->id();
 
         try{
             $data->save();
@@ -94,6 +95,7 @@ class PensionDeductionController extends Controller
         $data->deduction_type = $request['deduction_type'];
         $data->amount = $request['amount'];
         $data->description = $request['description'];
+        $data->edited_by = auth()->id();
 
         try{
             $data->save();

@@ -8,4 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class PensionerDocuments extends Model
 {
     use HasFactory;
+
+
+    public function monthlyPension()
+    {
+        return $this->belongsTo(\App\Models\MonthlyPension::class);
+    }
 }

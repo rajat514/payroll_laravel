@@ -97,6 +97,7 @@ class MonthlyPensionController extends Controller
         $data->net_pension = $netPension;
         $data->remarks = $request['remarks'];
         $data->status = $request['status'];
+        $data->added_by = auth()->id();
 
         try{
             $data->save();
@@ -199,6 +200,7 @@ class MonthlyPensionController extends Controller
         $data->net_pension = $netPension;
         $data->remarks = $request['remarks'];
         $data->status = $request['status'];
+        $data->edited_by = auth()->id();
 
         try{
             $data->save();

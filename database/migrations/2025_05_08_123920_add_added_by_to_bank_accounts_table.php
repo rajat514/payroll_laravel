@@ -11,10 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('bank_accounts', function (Blueprint $table) {
-            $table->foreignId('added_by')->nullable()->constrained('users');
-            $table->foreignId('edited_by')->nullable()->constrained('users');
-        });
+        $tables = [
+            'monthly_pensions', 'pension_deductions', 'arrears', 'pensioner_documents'
+        ];
+        foreach ($tables as $table) {
+            Schema::table($table, function (Blueprint $table) {
+                $table->foreignId('added_by')->nullable()->constrained('users');
+                $table->foreignId('edited_by')->nullable()->constrained('users');
+            });
+        }
     }
 
     /**
@@ -22,8 +27,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('bank_accounts', function (Blueprint $table) {
-            //
-        });
+        $tables = [
+            'monthly_pensions', 'pension_deductions', 'arrears', 'pensioner_documents'
+        ];
+
+        foreach ($tables as $table) {
+            Schema::table($table, function (Blueprint $table) {
+                $table->dropForeign([$table->getTable() . '_added_by_foreign']);
+                $table->dropForeign([$table->getTable() . '_edited_by_foreign']);
+                $table->dropColumn(['added_by', 'edited_by']);
+            });
+        }
     }
 };
