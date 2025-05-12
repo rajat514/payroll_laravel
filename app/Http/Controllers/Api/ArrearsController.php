@@ -13,7 +13,7 @@ class ArrearsController extends Controller
      */
     public function index()
     {
-        $data = Arrears::all();
+        $data = Arrears::with('addedBy.role','editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch arrear data successfull!',
             'data' => $data
@@ -58,6 +58,7 @@ class ArrearsController extends Controller
         $data->dr_arrear = $request['dr_arrear'];
         $data->total_arrear = $request['total_arrear'];
         $data->remarks = $request['remarks'];
+        $data->added_by = auth()->id();
 
         try{
             $data->save();
@@ -120,6 +121,7 @@ class ArrearsController extends Controller
         $data->dr_arrear = $request['dr_arrear'];
         $data->total_arrear = $request['total_arrear'];
         $data->remarks = $request['remarks'];
+        $data->edited_by = auth()->id();
 
         try{
             $data->save();

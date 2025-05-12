@@ -13,7 +13,7 @@ class PensionDeductionController extends Controller
      */
     public function index()
     {
-        $data = PensionDeduction::with('monthlyPension')->get();
+        $data = PensionDeduction::with('monthlyPension','addedBy.role','editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch deduction data successfull!',
             'data' => $data

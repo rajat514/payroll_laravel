@@ -13,7 +13,7 @@ class DearnessReliefController extends Controller
      */
     public function index()
     {
-        $dr = DearnessRelief::all();
+        $dr = DearnessRelief::with('addedBy.role','editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch dearness relief successfully',
             'data' => $dr 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MonthlyPension extends Model
 {
@@ -17,6 +18,16 @@ class MonthlyPension extends Model
         'net_pension', 'remarks', 'status'
     ];
 
+    
+    public function addedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name','role_id');
+    }
+
+    public function editedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
+    }
 
     public function pensioner()
     {

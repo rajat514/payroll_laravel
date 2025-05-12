@@ -15,7 +15,7 @@ class PensionerController extends Controller
      */
     public function index()
     {
-        $persioner = PensionerInformation::with('employee')->get();
+        $persioner = PensionerInformation::with('employee','addedBy.role','editedBy.role','addedBy.role','editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch pensioner data successfully',
             'data' => $persioner

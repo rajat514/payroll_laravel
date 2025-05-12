@@ -13,7 +13,7 @@ class MonthlyPensionController extends Controller
      */
     public function index()
     {
-        $data = MonthlyPension::with('pensioner','dr')->get();
+        $data = MonthlyPension::with('pensioner','dr','addedBy.role','editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch monthly pension successfully!',
             'data' => $data

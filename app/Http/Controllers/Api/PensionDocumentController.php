@@ -13,7 +13,7 @@ class PensionDocumentController extends Controller
      */
     public function index()
     {
-        $data = PensionerDocuments::with('pensioner')->get();
+        $data = PensionerDocuments::with('pensioner','addedBy.role','editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch pension document data successfully!',
             'data' => $data
@@ -57,6 +57,7 @@ class PensionDocumentController extends Controller
         $data->expiry_date = $request['expiry_date'];
         $data->file_path = 'uploads/pension/' . $fileName;
         $data->upload_date = now();
+        $data->added_by = auth()->id();
 
         try{
             $data->save();
@@ -121,6 +122,7 @@ class PensionDocumentController extends Controller
         $data->expiry_date = $request['expiry_date'];
         $data->file_path = 'uploads/pension/' . $fileName;
         $data->upload_date = now();
+        $data->edited_by = auth()->id();
 
         try{
             $data->save();
