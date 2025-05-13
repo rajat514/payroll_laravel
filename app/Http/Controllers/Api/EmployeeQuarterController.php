@@ -14,7 +14,7 @@ class EmployeeQuarterController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = EmployeeQuarter::with('employee');
+        $query = EmployeeQuarter::with('employee', 'addby:id,name,role_id', 'editby:id,name,role_id');
         $query->when(
             request('employee_id'),
             fn($q) => $q->where('employee_id', request('employee_id'))

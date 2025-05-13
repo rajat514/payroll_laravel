@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeePayStructure;
+use App\Models\EmployeeQuarter;
 use App\Models\EmployeeTransportAllowance;
+use App\Models\GISEligibility;
 use App\Models\NetSalary;
+use App\Models\PayMatrixCell;
 use App\Models\PaySlip;
+use App\Models\UniformAllowanceRate;
 use Illuminate\Http\Request;
 
 class PaySlipController extends Controller
@@ -37,27 +41,34 @@ class PaySlipController extends Controller
         $request->validate([
             'net_salary_id' => 'required|numeric|exists:net_salaries,id',
             'pay_structure_id' => 'required|numeric|exists:employee_pay_structures,id',
-            'basic_pay' => 'required|numeric',
-            'da_rate_id' => 'required|numeric|exists:dearness_allowance_rates,id',
-            'da_amount' => 'required|numeric',
-            'hra_rate_id' => 'required|numeric|exists:house_rent_allowance_rates,id',
-            'hra_amount' => 'required|numeric',
-            'npa_rate_id' => 'required|numeric|exists:non_practicing_allowance_rates,id',
-            'npa_amount' => 'required|numeric',
-            'transport_rate_id' => 'required|numeric|exists:transport_allowance_rates,id',
-            'transport_amount' => 'required|numeric',
-            'uniform_rate_id' => 'required|numeric|exists:uniform_allowance_rates,id',
-            'uniform_rate_amount' => 'required|numeric',
-            'pay_plus_npa' => 'required|numeric',
-            'govt_contribution' => 'nullable|numeric',
-            'da_on_ta' => 'required|numeric',
-            'appears' => 'nullable|numeric',
-            'spacial_pay' => 'nullable|numeric',
-            'da_1' => 'nullable|numeric',
-            'da_2' => 'nullable|numeric',
-            'itc_leave_salary' => 'nullable|numeric',
-            'total_pay' => 'nullable|numeric',
+            // 'basic_pay' => 'required|numeric',
+            // 'da_rate_id' => 'required|numeric|exists:dearness_allowance_rates,id',
+            // 'da_amount' => 'required|numeric',
+            // 'hra_rate_id' => 'required|numeric|exists:house_rent_allowance_rates,id',
+            // 'hra_amount' => 'required|numeric',
+            // 'npa_rate_id' => 'required|numeric|exists:non_practicing_allowance_rates,id',
+            // 'npa_amount' => 'required|numeric',
+            // 'transport_rate_id' => 'required|numeric|exists:transport_allowance_rates,id',
+            // 'transport_amount' => 'required|numeric',
+            // 'credit_society_member_amount' => 'nullable|numeric',
+            // 'uniform_rate_id' => 'required|numeric|exists:uniform_allowance_rates,id',
+            // 'uniform_rate_amount' => 'required|numeric',
+            // 'pay_plus_npa' => 'required|numeric',
+            // 'govt_contribution' => 'nullable|numeric',
+            // 'da_on_ta' => 'required|numeric',
+            // 'appears' => 'nullable|numeric',
+            // 'spacial_pay' => 'nullable|numeric',
+            // 'da_1' => 'nullable|numeric',
+            // 'da_2' => 'nullable|numeric',
+            // 'itc_leave_salary' => 'nullable|numeric',
+            // 'total_pay' => 'nullable|numeric',
         ]);
+
+        $taAmount = 0; // Transport Allowance
+        $gisAmount = 0;
+        // $csmAmount = 0; // Credit society Member
+        $npaAmount = 0; // Non Practicing Allowance
+        $hraAmount = 0; // House Rent Allowance
 
         $net_salary = NetSalary::find($request['net_salary_id']);
         if (!$net_salary) return response()->json(['errorMsg' => 'Net Salary not found!'], 404);
@@ -69,10 +80,12 @@ class PaySlipController extends Controller
         if ($net_salary->employee_id != $employeePayStructure->employee_id) {
             return response()->json(['errorMsg' => 'Employee Net Salary and Employee Pay Structure not matched!']);
         }
-        $payMatrixLevel = $employeePayStructure->payMatrixCell->payMatrixLevel;
+
+        $employeePayCell = $employeePayStructure->payMatrixCell;
+        $employeePayLevel = $employeePayStructure->payMatrixCell->payMatrixLevel;
         $basicPay = $employeePayStructure->PayMatrixCell->amount;
 
-        $taRate = EmployeeTransportAllowance::where('pay_level', $payMatrixLevel->name)->get();
+        $taRate = EmployeeTransportAllowance::where('pay_level', $employeePayLevel->name)->first();
         // if (!$taRate->length) {
         //     return response()->json(['errorMsg' => 'Employee Pay structure', 'data' => $taRate]);
         // }
@@ -81,11 +94,43 @@ class PaySlipController extends Controller
         if (!$employee) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 
         if ($employee->pwd_status) {
-            $basicPay += 2 * $taRate[0]->amount;
+            $taAmount += 2 * $taRate->amount;
         } else {
-            $basicPay += $taRate[0]->amount;
+            $taAmount += $taRate->amount;
         }
-        return response()->json(['errorMsg' => 'Employee Pay structure', 'data' => $basicPay, 'data 1' => $employeePayStructure->payMatrixCell->amount]);
+
+        $gisEligibilityAmount = GISEligibility::where('pay_matrix_level', $employeePayLevel->name)->first();
+        if ($employee->gis_eligibility) {
+            $gisAmount += $gisEligibilityAmount->amount;
+        }
+
+        if ($employee->credit_society_member) {
+            if (!$request['credit_society_member_amount']) {
+                return response()->json(['errorMsg' => 'Credit Society Membership Amount required!'], 400);
+            }
+        }
+
+        $payMatrixCell = PayMatrixCell::with('payMatrixLevel')->where('index', $employeePayCell->index)->orderBy('amount', 'DESC')->get();
+
+        if ($employee->npa_eligibility) {
+            $npaAmount += $basicPay * 0.2;
+        }
+
+        $employeeQuarter = EmployeeQuarter::orderBy('date_of_occupation', 'DESC')->first();
+        if ($employee->hra_eligibility) {
+            $hraAmount += $basicPay * 0.27;
+        } else {
+            if (!$employeeQuarter->is_occupied) {
+                $hraAmount += $basicPay * 0.27;
+            }
+        }
+
+        $uaRates = UniformAllowanceRate::find($request['uniform_rate_id']);
+        if ($uaRates) {
+            return response()->json(['errorMsg' => 'Uniform Allowance Rates not found!']);
+        }
+
+        return response()->json(['errorMsg' => 'Employee Pay structure', 'data' => $basicPay, 'data 1' => $payMatrixCell]);
 
 
         $salaryPay = new PaySlip();

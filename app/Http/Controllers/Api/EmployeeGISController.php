@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\EmployeeGIS;
+use App\Models\GISEligibility;
 use Illuminate\Http\Request;
 
 class EmployeeGISController extends Controller
@@ -14,12 +14,12 @@ class EmployeeGISController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = EmployeeGIS::with('employee');
+        $query = GISEligibility::query();
 
-        $query->when(
-            request('employee_id'),
-            fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%')
-        );
+        // $query->when(
+        //     request('employee_id'),
+        //     fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%')
+        // );
 
         $total_count = $query->count();
 
@@ -31,19 +31,15 @@ class EmployeeGISController extends Controller
     function store(Request $request)
     {
         $request->validate([
-            'employee_id' => 'required|numeric|exists:employees,id',
+            'pay_matrix_level' => 'required|string|unique:g_i_s_eligibilities,pay_matrix_level',
             'scheme_category' => 'required|string',
-            'monthly_subscription' => 'required|numeric',
-            'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'amount' => 'required|numeric',
         ]);
 
-        $employeeGIS = new EmployeeGIS();
-        $employeeGIS->employee_id = $request['employee_id'];
+        $employeeGIS = new GISEligibility();
+        $employeeGIS->pay_matrix_level = $request['pay_matrix_level'];
         $employeeGIS->scheme_category = $request['scheme_category'];
-        $employeeGIS->monthly_subscription = $request['monthly_subscription'];
-        $employeeGIS->effective_from = $request['effective_from'];
-        $employeeGIS->effective_till = $request['effective_till'];
+        $employeeGIS->amount = $request['amount'];
         $employeeGIS->added_by = auth()->id();
 
         try {
@@ -57,28 +53,24 @@ class EmployeeGISController extends Controller
 
     function update(Request $request, $id)
     {
-        $employeeGIS = EmployeeGIS::find($id);
+        $employeeGIS = GISEligibility::find($id);
         if (!$employeeGIS) return response()->json(['errorMsg' => 'Employee GIS not found!'], 404);
 
         $request->validate([
-            'employee_id' => 'required|numeric|exists:employees,id',
+            'pay_matrix_level' => "required|string|unique:g_i_s_eligibilities,pay_matrix_level,$id,id",
             'scheme_category' => 'required|string',
-            'monthly_subscription' => 'required|numeric',
-            'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'amount' => 'required|numeric',
         ]);
 
-        $employeeGIS->employee_id = $request['employee_id'];
+        $employeeGIS->pay_matrix_level = $request['pay_matrix_level'];
         $employeeGIS->scheme_category = $request['scheme_category'];
-        $employeeGIS->monthly_subscription = $request['monthly_subscription'];
-        $employeeGIS->effective_from = $request['effective_from'];
-        $employeeGIS->effective_till = $request['effective_till'];
+        $employeeGIS->amount = $request['amount'];
         $employeeGIS->edited_by = auth()->id();
 
         try {
             $employeeGIS->save();
 
-            return response()->json(['successMsg' => 'Employee GIS Created!', 'data' => $employeeGIS]);
+            return response()->json(['successMsg' => 'Employee GIS Updated!', 'data' => $employeeGIS]);
         } catch (\Exception $e) {
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }

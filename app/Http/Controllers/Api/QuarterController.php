@@ -10,7 +10,7 @@ class QuarterController extends Controller
 {
     function index()
     {
-        $data = Quarter::all();
+        $data = Quarter::with('addby:id,name,role_id', 'editby:id,name,role_id')->all();
         return response()->json(['data' => $data]);
     }
 

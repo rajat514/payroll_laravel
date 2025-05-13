@@ -19,4 +19,14 @@ class EmployeeQuarter extends Model
     {
         return $this->belongsTo(Quarter::class);
     }
+
+    function addby(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'added_by', 'id');
+    }
+
+    function editby(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'edited_by', 'id');
+    }
 }
