@@ -13,11 +13,11 @@ class ArrearsController extends Controller
      */
     public function index()
     {
-        $data = Arrears::with('addedBy.role','editedBy.role')->get();
+        $data = Arrears::with('addedBy.role', 'editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch arrear data successfull!',
             'data' => $data
-        ],200);
+        ], 200);
     }
 
     /**
@@ -36,7 +36,7 @@ class ArrearsController extends Controller
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
             'from_month' => 'required|date',
-            'to_month' => 'required|date',
+            'to_month' => 'required|date|after:from_month',
             'payment_month' => 'required|date',
             'basic_arrear' => 'required|numeric',
             'additional_arrear' => 'required|numeric',
@@ -60,18 +60,17 @@ class ArrearsController extends Controller
         $data->remarks = $request['remarks'];
         $data->added_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
                 'message' => 'Arrear data create successfull!',
                 'data' => $data
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-            ],500);
+            ], 500);
         }
-
     }
 
     /**
@@ -96,12 +95,12 @@ class ArrearsController extends Controller
     public function update(Request $request, string $id)
     {
         $data = Arrears::find($id);
-        if(!$data) return response()->json(['message' => 'Arrear not found!'],404);
+        if (!$data) return response()->json(['message' => 'Arrear not found!'], 404);
 
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
             'from_month' => 'required|date',
-            'to_month' => 'required|date',
+            'to_month' => 'required|date|after:from_month',
             'payment_month' => 'required|date',
             'basic_arrear' => 'required|numeric',
             'additional_arrear' => 'required|numeric',
@@ -123,18 +122,17 @@ class ArrearsController extends Controller
         $data->remarks = $request['remarks'];
         $data->edited_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
                 'message' => 'Arrear data update successfull!',
                 'data' => $data
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-            ],500);
+            ], 500);
         }
-
     }
 
     /**

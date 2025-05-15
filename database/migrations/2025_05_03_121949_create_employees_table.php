@@ -21,6 +21,7 @@ return new class extends Migration
             $table->date('date_of_retirement')->nullable();
             $table->boolean('pwd_status')->default(1);
             $table->enum('pension_scheme', ["GPF", "NPS"]);
+            $table->enum('institute', ["NIOH", "ROHC"]);
             $table->string('pension_number')->nullable();
             $table->boolean('gis_eligibility')->default(0);
             $table->string('gis_no')->nullable();

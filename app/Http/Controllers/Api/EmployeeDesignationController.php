@@ -41,7 +41,7 @@ class EmployeeDesignationController extends Controller
                 'cadre' => 'required|string|min:2|max:191',
                 'job_group' => 'required|in:A,B,C,D',
                 'effective_from' => 'required|date',
-                'effective_till' => 'nullable|date',
+                'effective_till' => 'nullable|date|after:effective_from',
                 'promotion_order_no' => 'nullable|string|max:50',
             ]
         );
@@ -76,7 +76,7 @@ class EmployeeDesignationController extends Controller
                 'cadre' => 'required|string|min:2|max:191',
                 'job_group' => 'required|in:A,B,C,D',
                 'effective_from' => 'required|date',
-                'effective_till' => 'nullable|date',
+                'effective_till' => 'nullable|date|after:effective_from',
                 'promotion_order_no' => 'nullable|string|max:50',
             ]
         );

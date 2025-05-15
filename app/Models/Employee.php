@@ -51,6 +51,11 @@ class Employee extends Model
         return $this->hasMany(LoanAdvance::class);
     }
 
+    public function netSalary(): HasMany
+    {
+        return $this->hasMany(NetSalary::class);
+    }
+
     function addby(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by', 'id');

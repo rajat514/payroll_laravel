@@ -13,11 +13,11 @@ class PensionDocumentController extends Controller
      */
     public function index()
     {
-        $data = PensionerDocuments::with('pensioner','addedBy.role','editedBy.role')->get();
+        $data = PensionerDocuments::with('pensioner', 'addedBy.role', 'editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch pension document data successfully!',
             'data' => $data
-        ],200);
+        ], 200);
     }
 
     /**
@@ -39,7 +39,7 @@ class PensionDocumentController extends Controller
             'document_type' => 'required|in:PAN Card,Address Proof,Bank Details,Retirement Order,Life Certificate',
             'document_number' => 'required|max:50',
             'issue_date' => 'required|date',
-            'expiry_date' => 'nullable|date',
+            'expiry_date' => 'nullable|date|after:issue_date',
             'file' => 'required|mimes:pdf|max:2048'
         ]);
 
@@ -59,13 +59,12 @@ class PensionDocumentController extends Controller
         $data->upload_date = now();
         $data->added_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json(['message' => 'Document uploaded successfully', 'data' => $data], 201);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
-
     }
 
     /**
@@ -90,19 +89,19 @@ class PensionDocumentController extends Controller
     public function update(Request $request, string $id)
     {
         $data = PensionerDocuments::find($id);
-        if(!$data) return response()->json([
+        if (!$data) return response()->json([
             'message' => 'Pensioner Document not found!'
-        ],404);
+        ], 404);
 
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
             'document_type' => 'required|in:PAN Card,Address Proof,Bank Details,Retirement Order,Life Certificate',
             'document_number' => 'required|max:50',
             'issue_date' => 'required|date',
-            'expiry_date' => 'nullable|date',
+            'expiry_date' => 'nullable|date|after:issue_date',
             'file' => 'required|mimes:pdf|max:2048'
         ]);
-        
+
         // Delete previous file if exists
         if ($data->file_path && file_exists(public_path($data->file_path))) {
             unlink(public_path($data->file_path));
@@ -124,10 +123,10 @@ class PensionDocumentController extends Controller
         $data->upload_date = now();
         $data->edited_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json(['message' => 'Document updated successfully', 'data' => $data], 201);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }

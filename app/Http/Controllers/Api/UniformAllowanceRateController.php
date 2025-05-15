@@ -29,7 +29,7 @@ class UniformAllowanceRateController extends Controller
             'applicable_post' => 'required|string',
             'amount' => 'required|numeric',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
 
@@ -59,7 +59,7 @@ class UniformAllowanceRateController extends Controller
             'applicable_post' => 'required|string',
             'amount' => 'required|numeric',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
 

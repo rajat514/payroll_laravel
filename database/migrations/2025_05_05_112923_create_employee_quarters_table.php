@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('date_of_occupation');
             $table->date('date_of_leaving')->nullable();
             $table->boolean('is_current')->default(1);
+            $table->boolean('is_occupied')->default(0);
             $table->string('order_reference')->nullable();
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');

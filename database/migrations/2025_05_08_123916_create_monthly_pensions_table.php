@@ -15,18 +15,19 @@ return new class extends Migration
             $table->id();
             $table->foreignId('pensioner_id')->constrained('pensioner_information');
             $table->date('month');
-            $table->float('basic_pension', 10,2);
-            $table->float('commutation_amount', 10,2);
-            $table->float('additional_pension', 10,2);
+            $table->float('basic_pension', 10, 2);
+            $table->float('commutation_amount', 10, 2);
+            $table->float('additional_pension', 10, 2);
             $table->foreignId('dr_id')->nullable()->constrained('dearness_reliefs'); // References DR rate applied
-            $table->float('dr_amount', 10,2)->nullable(); // Calculated DR amount
-            $table->float('medical_allowance', 10,2); // Medical allowance
-            $table->float('total_pension', 10,2); // 
-            $table->float('total_recovery', 10,2);
-            $table->float('net_pension', 10,2);
+            $table->float('dr_amount', 10, 2)->nullable(); // Calculated DR amount
+            $table->float('medical_allowance', 10, 2); // Medical allowance
+            $table->float('total_pension', 10, 2); // 
+            $table->float('total_recovery', 10, 2);
+            $table->float('net_pension', 10, 2);
             $table->string('remarks', 255);  //  Remarks (expiry or other notes)
-            $table->enum('status', ['Pending','Processed','Paid'])->default('Pending');
-            $table->timestamps();
+            $table->enum('status', ['Pending', 'Processed', 'Paid'])->default('Pending');
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
 

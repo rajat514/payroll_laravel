@@ -13,11 +13,11 @@ class DearnessReliefController extends Controller
      */
     public function index()
     {
-        $dr = DearnessRelief::with('addedBy.role','editedBy.role')->get();
+        $dr = DearnessRelief::with('addedBy.role', 'editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch dearness relief successfully',
-            'data' => $dr 
-        ],200);
+            'data' => $dr
+        ], 200);
     }
 
     /**
@@ -35,7 +35,7 @@ class DearnessReliefController extends Controller
     {
         $request->validate([
             'effective_from' => 'required|date',
-            'effective_to' => 'required|date',
+            'effective_to' => 'required|date|after:effective_from',
             'dr_percentage' => 'required|numeric'
         ]);
 
@@ -45,18 +45,17 @@ class DearnessReliefController extends Controller
         $data->dr_percentage = $request['dr_percentage'];
         $data->added_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
                 'message' => 'Dearness relief create successfully',
-                'data' => $data 
-            ],200);
-        }catch(\Exception $e){
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
-            ],500);
+            ], 500);
         }
-
     }
 
     /**
@@ -82,11 +81,11 @@ class DearnessReliefController extends Controller
     {
         $data = DearnessRelief::find($id);
 
-        if(!$data) return response()->json(['message' => 'Dearness relief not found!'],404);
+        if (!$data) return response()->json(['message' => 'Dearness relief not found!'], 404);
 
         $request->validate([
             'effective_from' => 'required|date',
-            'effective_to' => 'required|date',
+            'effective_to' => 'required|date|after:effective_from',
             'dr_percentage' => 'required|numeric'
         ]);
 
@@ -95,16 +94,16 @@ class DearnessReliefController extends Controller
         $data->dr_percentage = $request['dr_percentage'];
         $data->edited_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
                 'message' => 'Dearness relief update successfully',
-                'data' => $data 
-            ],200);
-        }catch(\Exception $e){
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
-            ],500);
+            ], 500);
         }
     }
 

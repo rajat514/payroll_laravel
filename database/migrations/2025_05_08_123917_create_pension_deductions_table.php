@@ -14,10 +14,11 @@ return new class extends Migration
         Schema::create('pension_deductions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pension_id')->constrained('monthly_pensions');
-            $table->enum('deduction_type', ['Income Tax','Recovery','Other']);
-            $table->float('amount', 10,2);
+            $table->enum('deduction_type', ['Income Tax', 'Recovery', 'Other']);
+            $table->float('amount', 10, 2);
             $table->string('description', 255);
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
 

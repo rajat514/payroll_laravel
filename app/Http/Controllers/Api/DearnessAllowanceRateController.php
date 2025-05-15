@@ -29,7 +29,7 @@ class DearnessAllowanceRateController extends Controller
             'rate_percentage' => 'required|numeric',
             'pwd_rate_percentage' => 'required|numeric',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
 
@@ -59,7 +59,7 @@ class DearnessAllowanceRateController extends Controller
             'rate_percentage' => 'required|numeric',
             'pwd_rate_percentage' => 'required|numeric',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
 

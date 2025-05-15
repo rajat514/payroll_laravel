@@ -15,7 +15,7 @@ class NetSalaryController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = NetSalary::with('addby:id,name,role_id', 'editby:id,name,role_id', 'varifyby:id,name,role_id');
+        $query = NetSalary::with('addby:id,name,role_id', 'editby:id,name,role_id', 'varifyby:id,name,role_id', 'deduction', 'paySlip');
 
         $query->when(
             request('employee_id'),
@@ -36,7 +36,7 @@ class NetSalaryController extends Controller
             'month' => 'required|numeric',
             'year' => 'required|numeric',
             'processing_date' => 'required|date',
-            'payment_date' => 'nullable|date',
+            'payment_date' => 'nullable|date|after:processing_date',
             'net_amount' => 'required|numeric',
             'employee_bank_id' => 'required|numeric|exists:employee_bank_accounts,id',
         ]);
@@ -75,7 +75,7 @@ class NetSalaryController extends Controller
             'month' => 'required|numeric',
             'year' => 'required|numeric',
             'processing_date' => 'required|date',
-            'payment_date' => 'nullable|date',
+            'payment_date' => 'nullable|date|after:processing_date',
             'net_amount' => 'required|numeric',
             'employee_bank_id' => 'required|numeric|exists:employee_bank_accounts,id',
         ]);

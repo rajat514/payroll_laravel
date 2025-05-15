@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('employee_transport_allowances', function (Blueprint $table) {
+        Schema::create('dearness_reliefs', function (Blueprint $table) {
             $table->id();
-            $table->string('pay_level');
-            $table->float('amount', 10, 2);
+            $table->date('effective_from');
+            $table->date('effective_to');
+            $table->float('dr_percentage', 5, 2);
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
 
@@ -26,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('employee_transport_allowances');
+        Schema::dropIfExists('dearness_reliefs');
     }
 };

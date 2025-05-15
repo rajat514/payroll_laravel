@@ -114,7 +114,7 @@ class UserController extends Controller
         $request->validate([
             'role_id' => 'required|numeric|exists:roles,id',
             'name' => 'required|string|min:3|max:191',
-            'email' => 'required|email|unique:users,email',
+            'email' => "required|email|unique:users,email,$id,id",
             'institute' => 'required|in:NIOH,ROHC'
         ]);
 

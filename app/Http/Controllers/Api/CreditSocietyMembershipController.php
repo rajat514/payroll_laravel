@@ -40,7 +40,7 @@ class CreditSocietyMembershipController extends Controller
             'entrance_fee' => 'required|numeric',
             'is_active' => 'boolean|in:1,0',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'remark' => 'nullable|string|max:255'
         ]);
 
@@ -82,7 +82,7 @@ class CreditSocietyMembershipController extends Controller
             'entrance_fee' => 'required|numeric',
             'is_active' => 'boolean|in:1,0',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'remark' => 'nullable|string|max:255'
         ]);
 

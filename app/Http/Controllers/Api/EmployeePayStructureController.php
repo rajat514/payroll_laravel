@@ -35,7 +35,7 @@ class EmployeePayStructureController extends Controller
             'matrix_cell_id' => 'required|numeric|exists:pay_matrix_cells,id',
             'commission' => 'required|numeric',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
 
@@ -66,7 +66,7 @@ class EmployeePayStructureController extends Controller
             'matrix_cell_id' => 'required|numeric|exists:pay_matrix_cells,id',
             'commission' => 'required|numeric',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
 

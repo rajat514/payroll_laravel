@@ -15,7 +15,7 @@ class PensionerController extends Controller
      */
     public function index()
     {
-        $persioner = PensionerInformation::with('employee','addedBy.role','editedBy.role','addedBy.role','editedBy.role')->get();
+        $persioner = PensionerInformation::with('employee', 'addedBy.role', 'editedBy.role', 'addedBy.role', 'editedBy.role')->get();
         return response()->json([
             'message' => 'Fetch pensioner data successfully',
             'data' => $persioner
@@ -145,8 +145,8 @@ class PensionerController extends Controller
             'retired_employee_id' => 'required',
             'relation' => 'required|in:Self,Spouse,Son,Daughter,Other',
             'dob' => 'required|date',
-            'doj' => 'required|date',
-            'dor' => 'required|date',
+            'doj' => 'required|date|after:dob',
+            'dor' => 'required|date|after:dob|after:doj',
             'end_date' => 'nullable|date',
             'status' => 'required|in:Active,Expired,Suspended',
             'pan_number' => 'required|string|max:10',

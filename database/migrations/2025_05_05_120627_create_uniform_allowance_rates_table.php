@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('uniform_allowance_rates', function (Blueprint $table) {
             $table->id();
-            $table->string('applicable_post');
+            $table->string('applicable_post')->nullable();
             $table->float('amount', 10, 2);
             $table->date('effective_from');
             $table->date('effective_till')->nullable();

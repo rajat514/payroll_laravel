@@ -19,4 +19,14 @@ class PaySlip extends Model
     {
         return $this->belongsTo(User::class, 'edited_by', 'id');
     }
+
+    function netSalary(): BelongsTo
+    {
+        return $this->belongsTo(NetSalary::class, 'net_salary_id', 'id');
+    }
+
+    function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
+    }
 }

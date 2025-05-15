@@ -18,6 +18,8 @@ Route::post('login', [\App\Http\Controllers\Api\UserController::class, 'login'])
 
 Route::group(['middleware' => 'auth:sanctum'], function () {
 
+    Route::apiResource('/role', \App\Http\Controllers\Api\RoleController::class)->only('index', 'store', 'update');
+
     Route::get('/user', [\App\Http\Controllers\Api\UserController::class, 'user']);
 
     Route::get('/users', [\App\Http\Controllers\Api\UserController::class, 'index']);
@@ -88,6 +90,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('pension-documents', \App\Http\Controllers\Api\PensionDocumentController::class)->only('index', 'store', 'update');
 
     Route::apiResource('employee-pay-slip', \App\Http\Controllers\Api\PaySlipController::class)->only('index', 'store', 'update');
+
+    Route::apiResource('employee-deduction', \App\Http\Controllers\Api\DeductionController::class)->only('index', 'store', 'update');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

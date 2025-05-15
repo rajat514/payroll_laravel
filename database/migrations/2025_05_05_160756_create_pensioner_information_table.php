@@ -35,7 +35,8 @@ return new class extends Migration
             $table->string('email', 100);
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
 

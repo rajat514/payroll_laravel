@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('dearnes_allowance_rates', function (Blueprint $table) {
             $table->id();
             $table->float('rate_percentage', 6, 2);
-            $table->float('pwd_rate_percentage', 6, 2);
+            $table->float('pwd_rate_percentage', 6, 2)->nullable();
             $table->date('effective_from');
             $table->date('effective_till')->nullable();
             $table->string('notification_ref', 50)->nullable();

@@ -15,11 +15,14 @@ class EmployeeStatusController extends Controller
             'employee_id' => 'required|numeric|exists:employees,id',
             'status' => 'required|in:Active,Suspended,Resigned,Retired,On Leave',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'remarks' => 'nullable|string|max:255',
             'order_reference' => 'nullable|string|max:255',
         ]);
 
+        if ($request['effective_till'] && $request['effective_till'] <= $request['effective_from']) {
+            return response()->json(['errorMsg' => 'Effective till must be greater than effective from'], 400);
+        }
         $employee = EmployeeStatus::where('employee_id', $request['employee_id'])->get()->last();
         $employee->effective_till = $request['effective_from'];
 
@@ -58,7 +61,7 @@ class EmployeeStatusController extends Controller
         $request->validate([
             'status' => 'required|in:Active,Suspended,Resigned,Retired,On Leave',
             'effective_from' => 'required|date',
-            'effective_till' => 'nullable|date',
+            'effective_till' => 'nullable|date|after:effective_from',
             'remarks' => 'nullable|string|max:255',
             'order_reference' => 'nullable|string|max:255',
         ]);
@@ -84,7 +87,7 @@ class EmployeeStatusController extends Controller
 
     function show($id)
     {
-        $data = EmployeeStatus::with('employee')->where('employee_id', $id)->get();
+        $data = EmployeeStatus::where('employee_id', $id)->orderBy('effective_from', 'DESC')->get();
         return response()->json(['data' => $data]);
     }
 }

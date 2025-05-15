@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class NetSalary extends Model
 {
@@ -23,5 +24,20 @@ class NetSalary extends Model
     function varifyby(): BelongsTo
     {
         return $this->belongsTo(User::class, 'varified_by', 'id');
+    }
+
+    function paySlip(): HasMany
+    {
+        return $this->hasMany(PaySlip::class);
+    }
+
+    function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
+    }
+
+    function deduction(): HasMany
+    {
+        return $this->hasMany(Deduction::class);
     }
 }

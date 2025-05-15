@@ -14,13 +14,14 @@ return new class extends Migration
         Schema::create('pensioner_documents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pensioner_id')->constrained('pensioner_information');
-            $table->enum('document_type',['PAN Card', 'Address Proof','Bank Details','Retirement Order','Life Certificate']);
+            $table->enum('document_type', ['PAN Card', 'Address Proof', 'Bank Details', 'Retirement Order', 'Life Certificate']);
             $table->string('document_number', 50);
             $table->date('issue_date');
             $table->date('expiry_date')->nullable();
             $table->string('file_path', 50);
             $table->timestamp('upload_date')->nullable();
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });
     }
 
