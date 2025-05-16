@@ -26,8 +26,9 @@ class PayMatrixLevelController extends Controller
     function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string',
-            'description' => 'required|string|min:3|max:191'
+            'name' => ['required', 'string', 'regex:/^(?:\d{1,2}[A-Z]|\d+)$/', 'unique:pay_matrix_levels'],
+            'description' => 'required|string|min:3|max:191',
+
         ]);
 
         $payMatrixLevel = new PayMatrixLevel();
@@ -50,7 +51,7 @@ class PayMatrixLevelController extends Controller
         if (!$payMatrixLevel) return response()->json(['errorMsg' => 'Pay Matrix Level not found!']);
 
         $request->validate([
-            'name' => 'required|string|min:3|max:30',
+            'name' => ['required|string', 'regex:^\d{1,2}[A-Z]$', "unique:pay_matrix_levels,$id,id"],
             'description' => 'required|string|min:3|max:191'
         ]);
 

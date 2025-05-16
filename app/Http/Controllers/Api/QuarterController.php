@@ -8,10 +8,20 @@ use App\Models\Quarter;
 
 class QuarterController extends Controller
 {
+
     function index()
     {
-        $data = Quarter::with('addby:id,name,role_id', 'editby:id,name,role_id')->all();
-        return response()->json(['data' => $data]);
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = Quarter::with('addby:id,name,role_id', 'editby:id,name,role_id');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function store(Request $request)

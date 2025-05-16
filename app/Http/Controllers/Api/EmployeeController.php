@@ -128,6 +128,7 @@ class EmployeeController extends Controller
                 'first_name' => 'required|string|min:2|max:191',
                 'last_name' => 'required|string|min:2|max:191',
                 'gender' => 'required|in:male,female,other',
+                'institute' => 'required|in:NIOH,ROHC',
                 'date_of_birth' => 'required|date',
                 'date_of_joining' => 'required|date|after:date_of_birth',
                 'date_of_retirement' => 'nullable|date|after:date_of_joining|after:date_of_birth',
@@ -158,6 +159,7 @@ class EmployeeController extends Controller
         $employee->first_name = $request['first_name'];
         $employee->last_name = $request['last_name'];
         $employee->gender = $request['gender'];
+        $employee->institute = $request['institute'];
         $employee->date_of_birth = $request['date_of_birth'];
         $employee->date_of_joining = $request['date_of_joining'];
         $employee->date_of_retirement = $request['date_of_retirement'];
@@ -205,6 +207,9 @@ class EmployeeController extends Controller
             'employeeStatus:id,employee_id,status,effective_from,effective_till',
             'employeeBank',
             'employeeDesignation',
+            'netSalary',
+            'employeePayStructure',
+            'employeeQuarter',
             'addby:id,name,role_id',
             'editby:id,name,role_id'
         )->find($id);

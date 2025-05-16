@@ -101,4 +101,12 @@ class NetSalaryController extends Controller
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
+
+    function show($id)
+    {
+        $netSalary = NetSalary::with('deduction', 'paySlip')->find($id);
+        if (!$netSalary) return response()->json(['errorMsg' => 'Net Salary not found!'], 404);
+
+        return response()->json(['data' => $netSalary]);
+    }
 }

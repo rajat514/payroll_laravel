@@ -75,7 +75,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::apiResource('employee-loan', \App\Http\Controllers\Api\LoanAdvanceController::class)->except(['destroy,show']);
 
-    Route::apiResource('salary', \App\Http\Controllers\Api\NetSalaryController::class)->except(['destroy,show']);
+    Route::apiResource('salary', \App\Http\Controllers\Api\NetSalaryController::class)->except(['destroy']);
 
     Route::apiResource('monthly-pension', \App\Http\Controllers\Api\MonthlyPensionController::class)->only('index', 'store', 'update');
 

@@ -16,6 +16,10 @@ class PayMatrixCellController extends Controller
 
         $query = PayMatrixCell::with('payMatrixLevel');
 
+        $query->when(
+            request('matrix_level_id'),
+            fn($q) => $q->where('matrix_level_id', 'LIKE', '%' . request('matrix_level_id') . '%')
+        );
         $total_count = $query->count();
 
         $data = $query->offset($offset)->limit($limit)->get();
@@ -27,7 +31,7 @@ class PayMatrixCellController extends Controller
     {
         $request->validate([
             'matrix_level_id' => 'required|numeric|exists:pay_matrix_levels,id',
-            'index' => 'required|numeric',
+            'index' => ['required', 'numeric', 'regex:/^\d{1,2}$/'],
             'amount' => 'required|numeric'
         ]);
 
@@ -53,7 +57,7 @@ class PayMatrixCellController extends Controller
 
         $request->validate([
             'matrix_level_id' => 'required|numeric|exists:pay_matrix_levels,id',
-            'index' => 'required|numeric',
+            'index' => ['required', 'numeric', 'regex:/^\d{1,2}$/'],
             'amount' => 'required|numeric'
         ]);
 

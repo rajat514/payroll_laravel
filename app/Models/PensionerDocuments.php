@@ -10,19 +10,24 @@ class PensionerDocuments extends Model
 {
     use HasFactory;
 
-    
+
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name','role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name', 'role_id');
     }
 
     public function editedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
-    
+
     public function monthlyPension()
     {
         return $this->belongsTo(\App\Models\MonthlyPension::class);
+    }
+
+    public function pensioner()
+    {
+        return $this->belongsTo(\App\Models\PensionerInformation::class);
     }
 }

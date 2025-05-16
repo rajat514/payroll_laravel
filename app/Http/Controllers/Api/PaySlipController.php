@@ -49,12 +49,11 @@ class PaySlipController extends Controller
             'year' => 'required|numeric',
             'processing_date' => 'required|date',
             'payment_date' => 'nullable|date',
-            'net_amount' => 'required|numeric',
             'employee_bank_id' => 'required|numeric|exists:employee_bank_accounts,id',
 
-            // 'net_salary_id' => 'nullable|numeric|exists:net_salaries,id',
+            'net_salary_id' => 'nullable|numeric|exists:net_salaries,id',
             'pay_structure_id' => 'required|numeric|exists:employee_pay_structures,id',
-            'da_rate_id' => 'nullable|numeric|exists:dearnes_allowance_rates,id',
+            'da_rate_id' => 'required|numeric|exists:dearnes_allowance_rates,id',
             // 'da_amount' => 'required|numeric',
             'hra_rate_id' => 'nullable|numeric|exists:house_rent_allowance_rates,id',
             // 'hra_amount' => 'required|numeric',
@@ -76,9 +75,6 @@ class PaySlipController extends Controller
 
 
 
-        $employeeBank = EmployeeBankAccount::find($request['employee_bank_id']);
-        if (!$employeeBank->is_active) return response()->json(['errorMsg' => 'Please fill the correct Bank'], 400);
-        if ($employeeBank->employee_id != $request['employee_id']) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
 
         $netSalary = new NetSalary();
         $netSalary->employee_id = $request['employee_id'];
@@ -86,7 +82,7 @@ class PaySlipController extends Controller
         $netSalary->year = $request['year'];
         $netSalary->processing_date = $request['processing_date'];
         $netSalary->payment_date = $request['payment_date'];
-        $netSalary->net_amount = $request['net_amount'];
+        $netSalary->net_amount = 0;
         $netSalary->employee_bank_id = $request['employee_bank_id'];
         $netSalary->varified_by = auth()->id();
         $netSalary->added_by = auth()->id();
@@ -105,8 +101,11 @@ class PaySlipController extends Controller
         // if (!$net_salary) return response()->json(['errorMsg' => 'Net Salary not found!'], 404);
         // return response()->json(['Msg' => $net_salary_1]);
 
-        $employee = Employee::find($net_salary->employee_id);
+        $employee = Employee::find($request['employee_id']);
         if (!$employee) return response()->json(['errorMsg' => 'Employee not found!'], 404);
+
+        $employeeBank = EmployeeBankAccount::find($net_salary->employee_bank_id);
+        if (!$employeeBank->is_active) return response()->json(['errorMsg' => 'Please fill the correct Bank'], 400);
 
         $employeeStatus = EmployeeStatus::where('employee_id', $employee->id)->orderBy('effective_from', 'DESC')->get();
         $employeeCurrentStatus = $employeeStatus[0];
@@ -121,6 +120,7 @@ class PaySlipController extends Controller
         $daRateAmount = 0; // Dearness Allowance Rate
         $uaRateAmount = 0; // Uniform Allowance Rate 
         $totalBasicSalary = 0;
+        $netAmount = 0;
 
         $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($request['pay_structure_id']);
         if (!$employeePayStructure) {
@@ -224,6 +224,12 @@ class PaySlipController extends Controller
         $sum = $request['govt_contribution'] +  $request['pay_plus_npa'] + $request['spacial_pay'] + $request['arrears'] + $request['da_1'] + $request['da_2'] + $request['itc_leave_salary'];
         $totalBasicSalary = $basicPay + $taAmount + $gisAmount + $npaAmount + $hraAmount + $daRateAmount + $uaRateAmount + $sum;
 
+        $net_salary->net_amount = $totalBasicSalary;
+        try {
+            $net_salary->save();
+        } catch (\Exception $e) {
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
+        }
         // return response()->json([
         //     'errorMsg' => 'Employee Pay structure',
         //     'employee' => $employee,
@@ -239,21 +245,28 @@ class PaySlipController extends Controller
         //     'totalBasicSalary' => $totalBasicSalary,
         // ]);
 
+        // $net_salary->net_amount += $totalBasicSalary;
+        // try {
+        //     $net_salary->save();
+        // } catch (\Exception $e) {
+        //     return response()->json(['errorMsg' => $e->getMessage()], 500);
+        // }
+
 
         $salaryPay = new PaySlip();
         $salaryPay->net_salary_id = $net_salary->id;
         $salaryPay->pay_structure_id = $request['pay_structure_id'];
         $salaryPay->basic_pay = $basicPay;
         $salaryPay->da_rate_id = $request['da_rate_id'];
-        $salaryPay->da_amount = $daRateAmount ?? 0;
-        $salaryPay->hra_rate_id = $request['hra_rate_id'];
-        $salaryPay->hra_amount = $hraAmount ?? 0;
-        $salaryPay->npa_rate_id = $request['npa_rate_id'];
-        $salaryPay->npa_amount = $npaAmount ?? 0;
+        $salaryPay->da_amount = $daRateAmount;
+        $salaryPay->hra_rate_id = $employee->hra_eligibility ? $request['hra_rate_id'] : null;
+        $salaryPay->hra_amount = $hraAmount;
+        $salaryPay->npa_rate_id = $employee->npa_eligibility ? $request['npa_rate_id'] : null;
+        $salaryPay->npa_amount = $npaAmount;
         $salaryPay->transport_rate_id = $taRate->id;
-        $salaryPay->transport_amount = $taAmount ?? 0;
-        $salaryPay->uniform_rate_id = $request['uniform_rate_id'];
-        $salaryPay->uniform_rate_amount = $uaRateAmount ?? 0;
+        $salaryPay->transport_amount = $taAmount;
+        $salaryPay->uniform_rate_id = $employee->uniform_allowance_eligibility ? $request['uniform_rate_id'] : null;
+        $salaryPay->uniform_rate_amount = $uaRateAmount;
         $salaryPay->pay_plus_npa = $request['pay_plus_npa'] ?? 0;
         $salaryPay->govt_contribution = $request['govt_contribution'] ?? 0;
         $salaryPay->da_on_ta = $request['da_on_ta'] ?? 0;
@@ -268,7 +281,7 @@ class PaySlipController extends Controller
         try {
             $salaryPay->save();
 
-            return response()->json(['successMsg' => 'Pay Slip created!', 'data' => $salaryPay]);
+            return response()->json(['successMsg' => 'Pay Slip created!', 'data' => $salaryPay, $net_salary]);
         } catch (\Exception $e) {
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
@@ -287,14 +300,14 @@ class PaySlipController extends Controller
             'npa_rate_id' => 'nullable|numeric|exists:non_practicing_allowance_rates,id',
             'transport_rate_id' => 'nullable|numeric|exists:transport_allowance_rates,id',
             'uniform_rate_id' => 'nullable|numeric|exists:uniform_allowance_rates,id',
-            'pay_plus_npa' => 'required|numeric',
-            'govt_contribution' => 'required|numeric',
+            'pay_plus_npa' => 'nullable|numeric',
+            'govt_contribution' => 'nullable|numeric',
             // 'da_on_ta' => 'required|numeric',
-            'arrears' => 'required|numeric',
-            'spacial_pay' => 'required|numeric',
-            'da_1' => 'required|numeric',
-            'da_2' => 'required|numeric',
-            'itc_leave_salary' => 'required|numeric',
+            'arrears' => 'nullable|numeric',
+            'spacial_pay' => 'nullable|numeric',
+            'da_1' => 'nullable|numeric',
+            'da_2' => 'nullable|numeric',
+            'itc_leave_salary' => 'nullable|numeric',
         ]);
 
         // $employeeBank = EmployeeBankAccount::find($request['employee_bank_id']);
@@ -302,7 +315,7 @@ class PaySlipController extends Controller
         // if ($employeeBank->employee_id != $request['employee_id']) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
 
 
-        $net_salary = NetSalary::find($request['net_salary_id']);
+        $net_salary = NetSalary::with('deduction', 'paySlip')->find($request['net_salary_id']);
         if (!$net_salary) {
             return response()->json(['errorMsg' => 'Net Salary not found!']);
         }
@@ -408,19 +421,23 @@ class PaySlipController extends Controller
         $salaryPay->transport_amount; // = $salaryPay->taAmount;
         $salaryPay->uniform_rate_id = $request['uniform_rate_id'];
         $salaryPay->uniform_rate_amount; // = $uniform_rate_amount;
-        $salaryPay->pay_plus_npa = $request['pay_plus_npa'];
-        $salaryPay->govt_contribution = $request['govt_contribution'];
+        $request['pay_plus_npa'] ? $salaryPay->pay_plus_npa = $request['pay_plus_npa'] : $salaryPay->pay_plus_npa;
+        $request['govt_contribution'] ? $salaryPay->govt_contribution = $request['govt_contribution'] : $salaryPay->govt_contribution;
         $salaryPay->da_on_ta = $request['da_on_ta'] ?? 0;
-        $salaryPay->arrears = $request['arrears'];
-        $salaryPay->spacial_pay = $request['spacial_pay'];
-        $salaryPay->da_1 = $request['da_1'];
-        $salaryPay->da_2 = $request['da_2'];
-        $salaryPay->itc_leave_salary = $request['itc_leave_salary'];
+        $request['arrears'] ? $salaryPay->arrears = $request['arrears'] : $salaryPay->arrears;
+        $request['spacial_pay'] ? $salaryPay->spacial_pay = $request['spacial_pay'] : $salaryPay->spacial_pay;
+        $request['da_1'] ? $salaryPay->da_1 = $request['da_1'] : $salaryPay->da_1;
+        $request['da_2'] ? $salaryPay->da_2 = $request['da_2'] : $salaryPay->da_2;
+        $request['itc_leave_salary'] ? $salaryPay->itc_leave_salary = $request['itc_leave_salary'] : $salaryPay->itc_leave_salary;
         $salaryPay->total_pay = $totalBasicSalary;
         $salaryPay->added_by = auth()->id();
 
         try {
             $salaryPay->save();
+
+            $net_salary->net_amount = $salaryPay->total_pay - $net_salary->deduction->total_deductions;
+
+            $net_salary->save();
 
             return response()->json(['successMsg' => 'Pay Slip updated!', 'data' => $salaryPay]);
         } catch (\Exception $e) {
