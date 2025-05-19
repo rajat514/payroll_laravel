@@ -13,11 +13,17 @@ class PensionDocumentController extends Controller
      */
     public function index()
     {
-        $data = PensionerDocuments::with('pensioner', 'addedBy.role', 'editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch pension document data successfully!',
-            'data' => $data
-        ], 200);
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = PensionerDocuments::with('pensioner', 'addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -61,9 +67,9 @@ class PensionDocumentController extends Controller
 
         try {
             $data->save();
-            return response()->json(['message' => 'Document uploaded successfully', 'data' => $data], 201);
+            return response()->json(['successMsg' => 'Document uploaded successfully', 'data' => $data], 201);
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 
@@ -90,7 +96,7 @@ class PensionDocumentController extends Controller
     {
         $data = PensionerDocuments::find($id);
         if (!$data) return response()->json([
-            'message' => 'Pensioner Document not found!'
+            'errorMsg' => 'Pensioner Document not found!'
         ], 404);
 
         $request->validate([
@@ -125,9 +131,9 @@ class PensionDocumentController extends Controller
 
         try {
             $data->save();
-            return response()->json(['message' => 'Document updated successfully', 'data' => $data], 201);
+            return response()->json(['successMsg' => 'Document updated successfully', 'data' => $data], 201);
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 

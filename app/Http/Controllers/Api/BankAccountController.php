@@ -14,11 +14,18 @@ class BankAccountController extends Controller
      */
     public function index()
     {
-        $data = BankAccount::with('pensioner','addedBy.role','editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch bank account detail successfully',
-            'data' => $data
-        ],200);
+
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = BankAccount::with('pensioner', 'addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -65,18 +72,17 @@ class BankAccountController extends Controller
         $bank->added_by = auth()->id();
 
 
-        try{
+        try {
             $bank->save();
             return response()->json([
-                'message' => 'Bank account detail create successfully!',
+                'successMsg' => 'Bank account detail create successfully!',
                 'data' => $bank
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
-            ],500);
+                'errorMsg' => $e->getMessage(),
+            ], 500);
         }
-        
     }
 
     /**
@@ -85,35 +91,29 @@ class BankAccountController extends Controller
     public function show(string $id)
     {
         $bank = BankAccount::find($id);
-        
-        if(!$bank) return response()->json([
-            'message' => 'Bank account not found!'
-        ],404);
+
+        if (!$bank) return response()->json([
+            'errorMsg' => 'Bank account not found!'
+        ], 404);
 
         $bank->is_active === 0 ? $bank->is_active = 1 : $bank->is_active = 0;
         $bank->edited_by = auth()->id();
-        
-        try{
+
+        try {
             $bank->update();
             return response()->json([
-                'message' => 'Bank account detail status change successfully!',
                 'data' => $bank
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
-            ],500);
+                'errorMsg' => $e->getMessage(),
+            ], 500);
         }
-
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
-    {
-        //
-    }
 
     /**
      * Update the specified resource in storage.
@@ -121,10 +121,10 @@ class BankAccountController extends Controller
     public function update(Request $request, string $id)
     {
         $bank = BankAccount::find($id);
-        
-        if(!$bank) return response()->json([
-            'message' => 'Bank account not found!'
-        ],404);
+
+        if (!$bank) return response()->json([
+            'errorMsg' => 'Bank account not found!'
+        ], 404);
 
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
@@ -153,19 +153,19 @@ class BankAccountController extends Controller
         $bank->ifsc_code = $request['ifsc_code'];
         $bank->is_active = $request['is_active'];
         $bank->edited_by = auth()->id();
-        
 
 
-        try{
+
+        try {
             $bank->update();
             return response()->json([
-                'message' => 'Bank account detail update successfully!',
+                'successMsg' => 'Bank account detail update successfully!',
                 'data' => $bank
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
-            ],500);
+                'errorMsg' => $e->getMessage(),
+            ], 500);
         }
     }
 

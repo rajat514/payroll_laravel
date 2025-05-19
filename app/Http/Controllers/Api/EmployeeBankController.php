@@ -37,6 +37,7 @@ class EmployeeBankController extends Controller
         if (!$employeeBank) return response()->json(['errorMsg' => 'Employee Bank Not Found!']);
 
         $employeeBank->is_active = !$employeeBank->is_active;
+        $employeeBank->edited_by = auth()->id();
 
         try {
             $employeeBank->save();

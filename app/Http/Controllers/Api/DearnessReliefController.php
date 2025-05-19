@@ -13,11 +13,18 @@ class DearnessReliefController extends Controller
      */
     public function index()
     {
-        $dr = DearnessRelief::with('addedBy.role', 'editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch dearness relief successfully',
-            'data' => $dr
-        ], 200);
+
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = DearnessRelief::with('addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -48,12 +55,12 @@ class DearnessReliefController extends Controller
         try {
             $data->save();
             return response()->json([
-                'message' => 'Dearness relief create successfully',
+                'successMsg' => 'Dearness relief create successfully',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage()
+                'errorMsg' => $e->getMessage()
             ], 500);
         }
     }
@@ -81,7 +88,7 @@ class DearnessReliefController extends Controller
     {
         $data = DearnessRelief::find($id);
 
-        if (!$data) return response()->json(['message' => 'Dearness relief not found!'], 404);
+        if (!$data) return response()->json(['errorMsg' => 'Dearness relief not found!'], 404);
 
         $request->validate([
             'effective_from' => 'required|date',
@@ -97,12 +104,12 @@ class DearnessReliefController extends Controller
         try {
             $data->save();
             return response()->json([
-                'message' => 'Dearness relief update successfully',
+                'successMsg' => 'Dearness relief update successfully',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage()
+                'errorMsg' => $e->getMessage()
             ], 500);
         }
     }

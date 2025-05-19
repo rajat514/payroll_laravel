@@ -13,11 +13,17 @@ class ArrearsController extends Controller
      */
     public function index()
     {
-        $data = Arrears::with('addedBy.role', 'editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch arrear data successfull!',
-            'data' => $data
-        ], 200);
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = Arrears::with('addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -63,12 +69,12 @@ class ArrearsController extends Controller
         try {
             $data->save();
             return response()->json([
-                'message' => 'Arrear data create successfull!',
+                'successMsg' => 'Arrear data create successfull!',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'errorMsg' => $e->getMessage(),
             ], 500);
         }
     }
@@ -125,12 +131,12 @@ class ArrearsController extends Controller
         try {
             $data->save();
             return response()->json([
-                'message' => 'Arrear data update successfull!',
+                'successMsg' => 'Arrear data update successfull!',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'errorMsg' => $e->getMessage(),
             ], 500);
         }
     }

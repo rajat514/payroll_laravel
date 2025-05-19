@@ -13,12 +13,18 @@ class MonthlyPensionController extends Controller
      */
     public function index()
     {
-        $data = MonthlyPension::with('pensioner','dr','addedBy.role','editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch monthly pension successfully!',
-            'data' => $data
-        ],200);
 
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = MonthlyPension::with('pensioner', 'dr', 'addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -48,33 +54,33 @@ class MonthlyPensionController extends Controller
         ], [
             'pensioner_id.required' => 'Please select a pensioner.',
             'pensioner_id.exists' => 'The selected pensioner does not exist.',
-        
+
             'month.required' => 'Please provide the month.',
             'month.date' => 'The month must be a valid date.',
-        
+
             'basic_pension.required' => 'Basic pension is required.',
             'basic_pension.numeric' => 'Basic pension must be a number.',
-        
+
             'commutation_amount.required' => 'Commutation amount is required.',
             'commutation_amount.numeric' => 'Commutation amount must be numeric.',
-        
+
             'additional_pension.required' => 'Additional pension is required.',
             'additional_pension.numeric' => 'Additional pension must be numeric.',
-        
+
             'dr_id.exists' => 'The selected dearness relief is invalid.',
-        
+
             'dr_amount.numeric' => 'Dearness relief amount must be numeric.',
-        
+
             'medical_allowance.required' => 'Medical allowance is required.',
             'medical_allowance.numeric' => 'Medical allowance must be numeric.',
-        
+
             'remarks.string' => 'Remarks must be a string.',
             'remarks.max' => 'Remarks may not be greater than 255 characters.',
-        
+
             'status.required' => 'Status is required.',
             'status.in' => 'Status must be one of: Pending, Processed, or Paid.',
         ]);
-        
+
         $formattedMonth = \Carbon\Carbon::parse($request->month)->startOfMonth()->format('Y-m-d');
 
         // Calculate totals
@@ -99,18 +105,17 @@ class MonthlyPensionController extends Controller
         $data->status = $request['status'];
         $data->added_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
-                'message' => 'Monthly Pension create successfully!',
+                'successMsg' => 'Monthly Pension create successfully!',
                 'data' => $data
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage()
-            ],500);
+                'errorMsg' => $e->getMessage()
+            ], 500);
         }
-
     }
 
     /**
@@ -136,7 +141,7 @@ class MonthlyPensionController extends Controller
     {
         $data = MonthlyPension::find($id);
 
-        if(!$data) return response()->json(['message' => 'Monthly pension not found!'],404);
+        if (!$data) return response()->json(['errorMsg' => 'Monthly pension not found!'], 404);
 
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
@@ -152,33 +157,33 @@ class MonthlyPensionController extends Controller
         ], [
             'pensioner_id.required' => 'Please select a pensioner.',
             'pensioner_id.exists' => 'The selected pensioner does not exist.',
-        
+
             'month.required' => 'Please provide the month.',
             'month.date' => 'The month must be a valid date.',
-        
+
             'basic_pension.required' => 'Basic pension is required.',
             'basic_pension.numeric' => 'Basic pension must be a number.',
-        
+
             'commutation_amount.required' => 'Commutation amount is required.',
             'commutation_amount.numeric' => 'Commutation amount must be numeric.',
-        
+
             'additional_pension.required' => 'Additional pension is required.',
             'additional_pension.numeric' => 'Additional pension must be numeric.',
-        
+
             'dr_id.exists' => 'The selected dearness relief is invalid.',
-        
+
             'dr_amount.numeric' => 'Dearness relief amount must be numeric.',
-        
+
             'medical_allowance.required' => 'Medical allowance is required.',
             'medical_allowance.numeric' => 'Medical allowance must be numeric.',
-        
+
             'remarks.string' => 'Remarks must be a string.',
             'remarks.max' => 'Remarks may not be greater than 255 characters.',
-        
+
             'status.required' => 'Status is required.',
             'status.in' => 'Status must be one of: Pending, Processed, or Paid.',
         ]);
-        
+
         $formattedMonth = \Carbon\Carbon::parse($request->month)->startOfMonth()->format('Y-m-d');
 
         // Calculate totals
@@ -202,16 +207,16 @@ class MonthlyPensionController extends Controller
         $data->status = $request['status'];
         $data->edited_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
-                'message' => 'Monthly Pension update successfully!',
+                'successMsg' => 'Monthly Pension update successfully!',
                 'data' => $data
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage()
-            ],500);
+                'errorMsg' => $e->getMessage()
+            ], 500);
         }
     }
 

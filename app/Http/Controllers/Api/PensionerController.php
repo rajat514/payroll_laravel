@@ -15,11 +15,18 @@ class PensionerController extends Controller
      */
     public function index()
     {
-        $persioner = PensionerInformation::with('employee', 'addedBy.role', 'editedBy.role', 'addedBy.role', 'editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch pensioner data successfully',
-            'data' => $persioner
-        ], 200);
+
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = PensionerInformation::with('employee', 'addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -66,7 +73,7 @@ class PensionerController extends Controller
         // Check if employee exists and is retired
         if (!$employeeStatus || $employeeStatus->status !== 'Retired') {
             return response()->json([
-                'message' => 'The provided employee is either not found or not retired.',
+                'errorMsg' => 'The provided employee is either not found or not retired.',
             ], 400);
         }
 
@@ -96,12 +103,12 @@ class PensionerController extends Controller
         try {
             $pensioner->save();
             return response()->json([
-                'message' => 'Pensioner detail create successfully!',
+                'successMsg' => 'Pensioner detail create successfully!',
                 'data' => $pensioner
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
+                'errorMsg' => $e->getMessage(),
             ], 500);
         }
     }

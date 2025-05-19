@@ -13,11 +13,18 @@ class PensionDeductionController extends Controller
      */
     public function index()
     {
-        $data = PensionDeduction::with('monthlyPension','addedBy.role','editedBy.role')->get();
-        return response()->json([
-            'message' => 'Fetch deduction data successfull!',
-            'data' => $data
-        ],200);
+
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = PensionDeduction::with('monthlyPension', 'addedBy.role', 'editedBy.role');
+
+        $total_count = $query->count();
+
+        $data = $query->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     /**
@@ -47,16 +54,16 @@ class PensionDeductionController extends Controller
         $data->description = $request['description'];
         $data->added_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
-                'message' => 'Pension Deduction create successfully!',
+                'successMsg' => 'Pension Deduction create successfully!',
                 'data' => $data
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
-            ],500);
+                'errorMsg' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -82,7 +89,7 @@ class PensionDeductionController extends Controller
     public function update(Request $request, string $id)
     {
         $data = PensionDeduction::find($id);
-        if(!$data) return response()->json(['message' => 'Pension deduction not found!'],404);
+        if (!$data) return response()->json(['errorMsg' => 'Pension deduction not found!'], 404);
 
         $request->validate([
             'pension_id' => 'required|exists:monthly_pensions,id',
@@ -97,16 +104,16 @@ class PensionDeductionController extends Controller
         $data->description = $request['description'];
         $data->edited_by = auth()->id();
 
-        try{
+        try {
             $data->save();
             return response()->json([
-                'message' => 'Pension Deduction update successfully!',
+                'successMsg' => 'Pension Deduction update successfully!',
                 'data' => $data
-            ],200);
-        }catch(\Exception $e){
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
-                'message' => $e->getMessage(),
-            ],500);
+                'errorMsg' => $e->getMessage(),
+            ], 500);
         }
     }
 
