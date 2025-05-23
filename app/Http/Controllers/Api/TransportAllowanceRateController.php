@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\EmployeeTransportAllowance;
 use App\Models\TransportAllowanceRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransportAllowanceRateController extends Controller
 {
@@ -27,12 +28,12 @@ class TransportAllowanceRateController extends Controller
     function store(Request $request)
     {
         $request->validate([
-            'pay_level' => 'required|string',
+            'pay_matrix_level' => 'required|string',
             'amount' => 'required|numeric',
         ]);
 
         $transportAllowance = new EmployeeTransportAllowance();
-        $transportAllowance->pay_level = $request['pay_level'];
+        $transportAllowance->pay_matrix_level = $request['pay_matrix_level'];
         $transportAllowance->amount = $request['amount'];
         $transportAllowance->added_by = auth()->id();
 
@@ -52,12 +53,15 @@ class TransportAllowanceRateController extends Controller
         if (!$transportAllowance) return response()->json(['errorMsg' => 'Transport Allowance Rate not found!'], 404);
 
         $request->validate([
-            'pay_level' => 'required|string',
+            'pay_matrix_level' => 'required|string',
             'amount' => 'required|numeric',
         ]);
 
+        DB::beginTransaction();
 
-        $transportAllowance->pay_level = $request['pay_level'];
+        $old_data = $transportAllowance->toArray();
+
+        $transportAllowance->pay_matrix_level = $request['pay_matrix_level'];
         $transportAllowance->amount = $request['amount'];
         $transportAllowance->added_by = auth()->id();
         $transportAllowance->edited_by = auth()->id();
@@ -65,9 +69,20 @@ class TransportAllowanceRateController extends Controller
         try {
             $transportAllowance->save();
 
-            return response()->json(['successMsg' => 'Transport Allowance Rate Updated!', 'data' => $transportAllowance]);
+            $transportAllowance->history()->create($old_data);
+
+            DB::commit();
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
+        return response()->json(['successMsg' => 'Transport Allowance Rate Updated!', 'data' => $transportAllowance]);
+    }
+
+    function show($id)
+    {
+        $data = EmployeeTransportAllowance::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 }

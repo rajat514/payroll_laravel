@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EmployeeDesignation;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeDesignationController extends Controller
 {
@@ -28,7 +29,7 @@ class EmployeeDesignationController extends Controller
 
     function show($id)
     {
-        $data = EmployeeDesignation::find($id);
+        $data = EmployeeDesignation::with('addedBy', 'editedBy', 'history.editedBy')->find($id);
         return response()->json(['data' => $data]);
     }
 
@@ -81,6 +82,10 @@ class EmployeeDesignationController extends Controller
             ]
         );
 
+        DB::beginTransaction();
+
+        $old_data = $employeeDesignation->toArray();
+
         $employeeDesignation->designation = $request['designation'];
         $employeeDesignation->cadre = $request['cadre'];
         $employeeDesignation->job_group = $request['job_group'];
@@ -92,8 +97,12 @@ class EmployeeDesignationController extends Controller
         try {
             $employeeDesignation->save();
 
+            $employeeDesignation->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Employee Designation Updated!', 'data' => $employeeDesignation]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

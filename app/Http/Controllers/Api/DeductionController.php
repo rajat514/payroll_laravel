@@ -9,6 +9,7 @@ use App\Models\EmployeePayStructure;
 use App\Models\GISEligibility;
 use App\Models\NetSalary;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DeductionController extends Controller
 {
@@ -18,7 +19,7 @@ class DeductionController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = Deduction::with('addby:id,name,role_id', 'editedby:id,name,role_id');
+        $query = Deduction::query();
 
         $query->when(
             request('net_salary_id'),
@@ -30,6 +31,13 @@ class DeductionController extends Controller
         $data = $query->orderBy('created_at', 'ASC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function show($id)
+    {
+        $data = Deduction::with('addedBy', 'editedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
@@ -144,6 +152,7 @@ class DeductionController extends Controller
     {
         $deduction = Deduction::find($id);
         if (!$deduction) return response()->json(['errorMsg' => 'Deduction not found!'], 404);
+
         $request->validate([
             'net_salary_id' => 'required|numeric|exists:net_salaries,id',
             'income_tax' => 'nullable|numeric|',
@@ -200,30 +209,51 @@ class DeductionController extends Controller
             }
         }
 
+        DB::beginTransaction();
 
-
+        $old_data = $deduction->toArray();
 
         $deduction->net_salary_id = $request['net_salary_id'];
-        $request['income_tax'] ? $deduction->income_tax = $request['income_tax'] : $deduction->income_tax;
-        $request['professional_tax'] ? $deduction->professional_tax = $request['professional_tax'] : $deduction->professional_tax;
-        $request['license_fee'] ? $deduction->license_fee = $request['license_fee'] : $deduction->license_fee;
-        $request['nfch_donation'] ? $deduction->nfch_donation = $request['nfch_donation'] : $deduction->nfch_donation;
-        $request['gpf'] ? $deduction->gpf = $request['gpf'] : $deduction->gpf;
-        $request['hra_recovery'] ? $deduction->hra_recovery = $request['hra_recovery'] : $deduction->hra_recovery;
-        $request['transport_allowance_recovery'] ? $deduction->transport_allowance_recovery = $request['transport_allowance_recovery'] : $deduction->transport_allowance_recovery;
-        $request['computer_advance'] ? $deduction->computer_advance = $request['computer_advance'] : $deduction->computer_advance;
-        $request['computer_advance_installment'] ? $deduction->computer_advance_installment = $request['computer_advance_installment'] : $deduction->computer_advance_installment;
-        $request['computer_advance_inst_no'] ? $deduction->computer_advance_inst_no = $request['computer_advance_inst_no'] : $deduction->computer_advance_inst_no;
-        $request['computer_advance_balance'] ? $deduction->computer_advance_balance = $request['computer_advance_balance'] : $deduction->computer_advance_balance;
-        $request['employee_contribution_10'] ? $deduction->employee_contribution_10 = $request['employee_contribution_10'] : $deduction->employee_contribution_10;
-        $request['govt_contribution_14_recovery'] ? $deduction->govt_contribution_14_recovery = $request['govt_contribution_14_recovery'] : $deduction->govt_contribution_14_recovery;
-        $request['dies_non_recovery'] ? $deduction->dies_non_recovery = $request['dies_non_recovery'] : $deduction->dies_non_recovery;
-        $request['computer_advance_interest'] ? $deduction->computer_advance_interest = $request['computer_advance_interest'] : $deduction->computer_advance_interest;
+        $deduction->income_tax = $request['income_tax'];
+        $deduction->professional_tax = $request['professional_tax'];
+        $deduction->license_fee = $request['license_fee'];
+        $deduction->nfch_donation = $request['nfch_donation'];
+        $deduction->gpf = $request['gpf'];
+        $deduction->hra_recovery = $request['hra_recovery'];
+        $deduction->transport_allowance_recovery = $request['transport_allowance_recovery'];
+        $deduction->computer_advance = $request['computer_advance'];
+        $deduction->computer_advance_installment = $request['computer_advance_installment'];
+        $deduction->computer_advance_inst_no = $request['computer_advance_inst_no'];
+        $deduction->computer_advance_balance = $request['computer_advance_balance'];
+        $deduction->employee_contribution_10 = $request['employee_contribution_10'];
+        $deduction->govt_contribution_14_recovery = $request['govt_contribution_14_recovery'];
+        $deduction->dies_non_recovery = $request['dies_non_recovery'];
+        $deduction->computer_advance_interest = $request['computer_advance_interest'];
         $deduction->gis = $gisAmount;
-        $request['pay_recovery'] ? $deduction->pay_recovery = $request['pay_recovery'] : $deduction->pay_recovery;
-        $request['nps_recovery'] ? $deduction->nps_recovery = $request['nps_recovery'] : $deduction->nps_recovery;
-        $request['lic'] ? $deduction->lic = $request['lic'] : $deduction->lic;
-        $request['credit_society_membership'] ? $deduction->credit_society = $request['credit_society_membership'] : $deduction->credit_society;
+        $deduction->pay_recovery = $request['pay_recovery'];
+        $deduction->nps_recovery = $request['nps_recovery'];
+        $deduction->lic = $request['lic'];
+        $deduction->credit_society = $request['credit_society_membership'];
+        // $request['income_tax'] ? $deduction->income_tax = $request['income_tax'] : $deduction->income_tax;
+        // $request['professional_tax'] ? $deduction->professional_tax = $request['professional_tax'] : $deduction->professional_tax;
+        // $request['license_fee'] ? $deduction->license_fee = $request['license_fee'] : $deduction->license_fee;
+        // $request['nfch_donation'] ? $deduction->nfch_donation = $request['nfch_donation'] : $deduction->nfch_donation;
+        // $request['gpf'] ? $deduction->gpf = $request['gpf'] : $deduction->gpf;
+        // $request['hra_recovery'] ? $deduction->hra_recovery = $request['hra_recovery'] : $deduction->hra_recovery;
+        // $request['transport_allowance_recovery'] ? $deduction->transport_allowance_recovery = $request['transport_allowance_recovery'] : $deduction->transport_allowance_recovery;
+        // $request['computer_advance'] ? $deduction->computer_advance = $request['computer_advance'] : $deduction->computer_advance;
+        // $request['computer_advance_installment'] ? $deduction->computer_advance_installment = $request['computer_advance_installment'] : $deduction->computer_advance_installment;
+        // $request['computer_advance_inst_no'] ? $deduction->computer_advance_inst_no = $request['computer_advance_inst_no'] : $deduction->computer_advance_inst_no;
+        // $request['computer_advance_balance'] ? $deduction->computer_advance_balance = $request['computer_advance_balance'] : $deduction->computer_advance_balance;
+        // $request['employee_contribution_10'] ? $deduction->employee_contribution_10 = $request['employee_contribution_10'] : $deduction->employee_contribution_10;
+        // $request['govt_contribution_14_recovery'] ? $deduction->govt_contribution_14_recovery = $request['govt_contribution_14_recovery'] : $deduction->govt_contribution_14_recovery;
+        // $request['dies_non_recovery'] ? $deduction->dies_non_recovery = $request['dies_non_recovery'] : $deduction->dies_non_recovery;
+        // $request['computer_advance_interest'] ? $deduction->computer_advance_interest = $request['computer_advance_interest'] : $deduction->computer_advance_interest;
+        // $deduction->gis = $gisAmount;
+        // $request['pay_recovery'] ? $deduction->pay_recovery = $request['pay_recovery'] : $deduction->pay_recovery;
+        // $request['nps_recovery'] ? $deduction->nps_recovery = $request['nps_recovery'] : $deduction->nps_recovery;
+        // $request['lic'] ? $deduction->lic = $request['lic'] : $deduction->lic;
+        // $request['credit_society_membership'] ? $deduction->credit_society = $request['credit_society_membership'] : $deduction->credit_society;
 
 
         $totalDeduction = $deduction->income_tax + $deduction->professional_tax + $deduction->licence_fee + $deduction->nfch_donation + $deduction->gpf + $deduction->hra_amount
@@ -241,8 +271,12 @@ class DeductionController extends Controller
 
             $netSalary->save();
 
+            $deduction->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Deduction updated!', 'data' => $deduction]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

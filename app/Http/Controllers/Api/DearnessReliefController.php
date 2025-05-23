@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DearnessRelief;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DearnessReliefController extends Controller
 {
@@ -18,7 +19,7 @@ class DearnessReliefController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = DearnessRelief::with('addedBy.role', 'editedBy.role');
+        $query = DearnessRelief::query();
 
         $total_count = $query->count();
 
@@ -68,18 +69,14 @@ class DearnessReliefController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show($id)
     {
-        //
+        $data = DearnessRelief::with('addedBy', 'editedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
+
 
     /**
      * Update the specified resource in storage.
@@ -96,6 +93,10 @@ class DearnessReliefController extends Controller
             'dr_percentage' => 'required|numeric'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $data->toArray();
+
         $data->effective_from = $request['effective_from'];
         $data->effective_to = $request['effective_to'];
         $data->dr_percentage = $request['dr_percentage'];
@@ -103,14 +104,14 @@ class DearnessReliefController extends Controller
 
         try {
             $data->save();
-            return response()->json([
-                'successMsg' => 'Dearness relief update successfully',
-                'data' => $data
-            ], 200);
+
+            $data->history()->create($old_data);
+
+            DB::commit();
+            return response()->json(['successMsg' => 'Dearness relief update successfully', 'data' => $data], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'errorMsg' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BankAccount extends Model
 {
@@ -12,7 +13,7 @@ class BankAccount extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name','role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name', 'role_id');
     }
 
     public function editedBy(): BelongsTo
@@ -23,5 +24,9 @@ class BankAccount extends Model
     public function pensioner(): BelongsTo
     {
         return $this->belongsTo(\App\Models\PensionerInformation::class, 'pensioner_id')->select('id', 'name');
+    }
+    function history(): HasMany
+    {
+        return $this->hasMany(BankAccountClone::class);
     }
 }

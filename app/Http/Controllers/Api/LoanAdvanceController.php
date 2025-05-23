@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\LoanAdvance;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LoanAdvanceController extends Controller
 {
@@ -80,6 +81,10 @@ class LoanAdvanceController extends Controller
             'is_active' => 'boolean|in:1,0',
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $loanAdvance->toArray();
+
         $loanAdvance->employee_id = $request['employee_id'];
         $loanAdvance->loan_type = $request['loan_type'];
         $loanAdvance->loan_amount = $request['loan_amount'];
@@ -94,9 +99,20 @@ class LoanAdvanceController extends Controller
         try {
             $loanAdvance->save();
 
+            $loanAdvance->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Employee Loan Updated!', 'data' => $loanAdvance]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
+    }
+
+    function show($id)
+    {
+        $data = LoanAdvance::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 }

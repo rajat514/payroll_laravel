@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BankAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BankAccountController extends Controller
 {
@@ -20,6 +21,11 @@ class BankAccountController extends Controller
         $offset = ($page - 1) * $limit;
 
         $query = BankAccount::with('pensioner', 'addedBy.role', 'editedBy.role');
+
+        $query->when(
+            'pensioner_id',
+            fn($q) => $q->where('pensioner_id', 'LIKE', '%' . request('pensioner_id') . '%')
+        );
 
         $total_count = $query->count();
 
@@ -90,26 +96,48 @@ class BankAccountController extends Controller
      */
     public function show(string $id)
     {
+        $bank = BankAccount::with('history.addedBy', 'history.editedBy')->find($id);
+
+        if (!$bank) return response()->json(['errorMsg' => 'Bank account not found!'], 404);
+
+        try {
+            $bank->update();
+            return response()->json(['data' => $bank], 200);
+        } catch (\Exception $e) {
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
+        }
+    }
+
+
+    public function changeStatus($id)
+    {
         $bank = BankAccount::find($id);
 
         if (!$bank) return response()->json([
             'errorMsg' => 'Bank account not found!'
         ], 404);
 
+        DB::beginTransaction();
+
+        $old_data = $bank->toArray();
+
         $bank->is_active === 0 ? $bank->is_active = 1 : $bank->is_active = 0;
         $bank->edited_by = auth()->id();
 
         try {
             $bank->update();
-            return response()->json([
-                'data' => $bank
-            ], 200);
+
+            $bank->history()->create($old_data);
+
+            DB::commit();
+            return response()->json(['data' => $bank], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'errorMsg' => $e->getMessage(),
-            ], 500);
+            DB::rollBack();
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
+
+
 
     /**
      * Show the form for editing the specified resource.
@@ -146,6 +174,10 @@ class BankAccountController extends Controller
             'ifsc_code.max' => 'IFSC code should not be longer than 20 characters.',
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $bank->toArray();
+
         $bank->pensioner_id = $request['pensioner_id'];
         $bank->bank_name = $request['bank_name'];
         $bank->branch_name = $request['branch_name'];
@@ -158,11 +190,16 @@ class BankAccountController extends Controller
 
         try {
             $bank->update();
+
+            $bank->history()->create($old_data);
+
+            DB::commit();
             return response()->json([
                 'successMsg' => 'Bank account detail update successfully!',
                 'data' => $bank
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'errorMsg' => $e->getMessage(),
             ], 500);

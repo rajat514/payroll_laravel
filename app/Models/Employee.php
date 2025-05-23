@@ -56,12 +56,17 @@ class Employee extends Model
         return $this->hasMany(NetSalary::class);
     }
 
-    function addby(): BelongsTo
+    function history(): HasMany
+    {
+        return $this->hasMany(EmployeeClone::class);
+    }
+
+    function addedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'added_by', 'id');
     }
 
-    function editby(): BelongsTo
+    function editedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'edited_by', 'id');
     }

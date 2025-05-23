@@ -20,4 +20,20 @@ class PayMatrixCell extends Model
     {
         return $this->hasMany(EmployeePayStructure::class);
     }
+
+    public function history(): HasMany
+    {
+        return $this->hasMany(PayMatrixCellClone::class);
+    }
+
+    function addedBy(): BelongsTo
+
+    {
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'name', 'role_id');
+    }
+
+    function editedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'name', 'role_id');
+    }
 }

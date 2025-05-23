@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HouseRentAllowanceRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class HouseRentAllowanceRateController extends Controller
 {
@@ -63,6 +64,10 @@ class HouseRentAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $houseRentAllowance->toArray();
+
         $houseRentAllowance->city_class = $request['city_class'];
         $houseRentAllowance->rate_percentage = $request['rate_percentage'];
         $houseRentAllowance->effective_from = $request['effective_from'];
@@ -73,9 +78,20 @@ class HouseRentAllowanceRateController extends Controller
         try {
             $houseRentAllowance->save();
 
+            $houseRentAllowance->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'House Rent Allowance Rate Updated!', 'data' => $houseRentAllowance]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
+    }
+
+    function show($id)
+    {
+        $data = HouseRentAllowanceRate::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 }

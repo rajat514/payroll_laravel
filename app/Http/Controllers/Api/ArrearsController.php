@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Arrears;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ArrearsController extends Controller
 {
@@ -18,6 +19,11 @@ class ArrearsController extends Controller
         $offset = ($page - 1) * $limit;
 
         $query = Arrears::with('addedBy.role', 'editedBy.role');
+
+        $query->when(
+            'pensioner_id',
+            fn($q) => $q->where('pensioner_id', 'LIKE', '%' . request('pensioner_id') . '%')
+        );
 
         $total_count = $query->count();
 
@@ -82,9 +88,11 @@ class ArrearsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show($id)
     {
-        //
+        $data = Arrears::with('history.addBy', 'history.editBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     /**
@@ -116,6 +124,10 @@ class ArrearsController extends Controller
             'remarks' => 'required|string|max:255',
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $data->toArray();
+
         $data->pensioner_id = $request['pensioner_id'];
         $data->from_month = $request['from_month'];
         $data->to_month = $request['to_month'];
@@ -128,13 +140,20 @@ class ArrearsController extends Controller
         $data->remarks = $request['remarks'];
         $data->edited_by = auth()->id();
 
+
+
         try {
             $data->save();
+
+            $data->history()->create($old_data);
+
+            DB::commit();
             return response()->json([
                 'successMsg' => 'Arrear data update successfull!',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'errorMsg' => $e->getMessage(),
             ], 500);

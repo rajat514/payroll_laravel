@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\EmployeeBankAccount;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeBankController extends Controller
 {
@@ -27,7 +28,7 @@ class EmployeeBankController extends Controller
 
     function show($id)
     {
-        $data = EmployeeBankAccount::find($id);
+        $data = EmployeeBankAccount::with('addedBy', 'editedBy', 'history.editedBy', 'history.addedBy')->find($id);
         return response()->json(['data' => $data]);
     }
 
@@ -36,14 +37,22 @@ class EmployeeBankController extends Controller
         $employeeBank = EmployeeBankAccount::find($id);
         if (!$employeeBank) return response()->json(['errorMsg' => 'Employee Bank Not Found!']);
 
+        DB::beginTransaction();
+
+        $old_data = $employeeBank->toArray();
+
         $employeeBank->is_active = !$employeeBank->is_active;
         $employeeBank->edited_by = auth()->id();
 
         try {
             $employeeBank->save();
 
+            $employeeBank->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Employee Bank Status Changed!']);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
@@ -102,6 +111,10 @@ class EmployeeBankController extends Controller
             ]
         );
 
+        DB::beginTransaction();
+
+        $old_data = $employeeBank->toArray();
+
         $employeeBank->bank_name = $request['bank_name'];
         $employeeBank->branch_name = $request['branch_name'];
         $employeeBank->account_number = $request['account_number'];
@@ -113,8 +126,12 @@ class EmployeeBankController extends Controller
         try {
             $employeeBank->save();
 
+            $employeeBank->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Employee Bank Updated!', 'data' => $employeeBank]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

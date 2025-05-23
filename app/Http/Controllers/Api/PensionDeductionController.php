@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PensionDeduction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PensionDeductionController extends Controller
 {
@@ -72,7 +73,9 @@ class PensionDeductionController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $data = PensionDeduction::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy',)->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     /**
@@ -98,6 +101,10 @@ class PensionDeductionController extends Controller
             'description' => 'string'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $data->toArray();
+
         $data->pension_id = $request['pension_id'];
         $data->deduction_type = $request['deduction_type'];
         $data->amount = $request['amount'];
@@ -106,11 +113,16 @@ class PensionDeductionController extends Controller
 
         try {
             $data->save();
+
+            $data->history()->create($old_data);
+
+            DB::commit();
             return response()->json([
                 'successMsg' => 'Pension Deduction update successfully!',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'errorMsg' => $e->getMessage(),
             ], 500);

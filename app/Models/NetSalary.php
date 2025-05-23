@@ -12,19 +12,25 @@ class NetSalary extends Model
 {
     use HasFactory;
 
-    function addby(): BelongsTo
+    public function history(): HasMany
     {
-        return $this->belongsTo(User::class, 'added_by', 'id');
+        return $this->hasMany(NetSalaryClone::class);
     }
 
-    function editby(): BelongsTo
+    function addedBy(): BelongsTo
+
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id');
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'name', 'role_id');
     }
 
-    function varifyby(): BelongsTo
+    function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'varified_by', 'id');
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'name', 'role_id');
+    }
+
+    function verifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'varified_by', 'id')->select('id', 'name', 'role_id');
     }
 
     function paySlip(): HasOne

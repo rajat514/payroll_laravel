@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use App\Models\EmployeeStatus;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeStatusController extends Controller
 {
@@ -66,6 +67,10 @@ class EmployeeStatusController extends Controller
             'order_reference' => 'nullable|string|max:255',
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $employeeStatus->toArray();
+
         $employeeStatus->status = $request['status'];
         $employeeStatus->effective_from = $request['effective_from'];
         $employeeStatus->effective_till = $request['effective_till'];
@@ -76,18 +81,36 @@ class EmployeeStatusController extends Controller
         try {
             $employeeStatus->save();
 
-            return response()->json([
-                'successMsg' => 'Employee Status Updated!',
-                'data' => $employeeStatus
-            ]);
+            $employeeStatus->history->create($old_data);
+
+            DB::commit();
+            return response()->json(['successMsg' => 'Employee Status Updated!', 'data' => $employeeStatus]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 
+    function index()
+    {
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $query = EmployeeStatus::query();
+
+        $query->when('employee_id', fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%'));
+
+        $total_count = $query->count();
+
+        $data = $query->orderBy('effective_from', 'DESC')->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
     function show($id)
     {
-        $data = EmployeeStatus::where('employee_id', $id)->orderBy('effective_from', 'DESC')->get();
+        $data = EmployeeStatus::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'employee')->find($id);
         return response()->json(['data' => $data]);
     }
 }

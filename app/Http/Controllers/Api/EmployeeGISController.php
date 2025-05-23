@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmployeeGIS;
 use App\Models\GISEligibility;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeGISController extends Controller
 {
@@ -62,6 +64,10 @@ class EmployeeGISController extends Controller
             'amount' => 'required|numeric',
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $employeeGIS->toArray();
+
         $employeeGIS->pay_matrix_level = $request['pay_matrix_level'];
         $employeeGIS->scheme_category = $request['scheme_category'];
         $employeeGIS->amount = $request['amount'];
@@ -70,9 +76,20 @@ class EmployeeGISController extends Controller
         try {
             $employeeGIS->save();
 
+            $employeeGIS->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Employee GIS Updated!', 'data' => $employeeGIS]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
+    }
+
+    function show($id)
+    {
+        $data = GISEligibility::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 }

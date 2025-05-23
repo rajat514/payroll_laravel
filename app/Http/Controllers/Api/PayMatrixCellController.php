@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PayMatrixCell;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PayMatrixCellController extends Controller
 {
@@ -25,6 +26,13 @@ class PayMatrixCellController extends Controller
         $data = $query->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function show($id)
+    {
+        $data = PayMatrixCell::with('payMatrixLevel', 'addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.payMatrixLevel')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
@@ -61,6 +69,10 @@ class PayMatrixCellController extends Controller
             'amount' => 'required|numeric'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $payMatrixCell->toArray();
+
         $payMatrixCell->matrix_level_id = $request['matrix_level_id'];
         $payMatrixCell->index = $request['index'];
         $payMatrixCell->amount = $request['amount'];
@@ -68,8 +80,12 @@ class PayMatrixCellController extends Controller
         try {
             $payMatrixCell->save();
 
+            $payMatrixCell->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Pay Matrix Cell Updated!', 'data' => $payMatrixCell]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

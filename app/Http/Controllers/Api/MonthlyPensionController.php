@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MonthlyPension;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MonthlyPensionController extends Controller
 {
@@ -27,13 +28,6 @@ class MonthlyPensionController extends Controller
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -123,7 +117,9 @@ class MonthlyPensionController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $data = MonthlyPension::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     /**
@@ -186,6 +182,10 @@ class MonthlyPensionController extends Controller
 
         $formattedMonth = \Carbon\Carbon::parse($request->month)->startOfMonth()->format('Y-m-d');
 
+        DB::beginTransaction();
+
+        $old_data = $data->toArray();
+
         // Calculate totals
         $drAmount = $request->dr_amount ?? 0;
         $totalPension = $request->basic_pension + $request->additional_pension + $drAmount + $request->medical_allowance;
@@ -209,11 +209,15 @@ class MonthlyPensionController extends Controller
 
         try {
             $data->save();
+
+            $data->history()->create($old_data);
+            DB::commit();
             return response()->json([
                 'successMsg' => 'Monthly Pension update successfully!',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'errorMsg' => $e->getMessage()
             ], 500);

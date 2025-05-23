@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\EmployeePayStructure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class EmployeePayStructureController extends Controller
 {
@@ -14,7 +15,7 @@ class EmployeePayStructureController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = EmployeePayStructure::with('employee', 'payMatrixCell');
+        $query = EmployeePayStructure::with('employee', 'payMatrixCell.payMatrixLevel');
 
         $query->when(
             request('employee_id'),
@@ -26,6 +27,13 @@ class EmployeePayStructureController extends Controller
         $data = $query->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function show($id)
+    {
+        $data = EmployeePayStructure::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.PayMatrixCell.payMatrixLevel')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
@@ -70,6 +78,10 @@ class EmployeePayStructureController extends Controller
             'order_reference' => 'nullable|max:50'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $payStructure->toArray();
+
         $payStructure->employee_id = $request['employee_id'];
         $payStructure->matrix_cell_id = $request['matrix_cell_id'];
         $payStructure->commission = $request['commission'];
@@ -80,8 +92,13 @@ class EmployeePayStructureController extends Controller
 
         try {
             $payStructure->save();
+
+            $payStructure->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Employee Pay Structure updated!', 'data' => $payStructure]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

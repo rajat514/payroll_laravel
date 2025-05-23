@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\NonPracticingAllowanceRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NonPracticingAllowanceRateController extends Controller
 {
@@ -21,6 +22,13 @@ class NonPracticingAllowanceRateController extends Controller
         $data = $query->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function show($id)
+    {
+        $data = NonPracticingAllowanceRate::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
@@ -63,6 +71,10 @@ class NonPracticingAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $nPAllowance->toArray();
+
         $nPAllowance->applicable_post = $request['applicable_post'];
         $nPAllowance->rate_percentage = $request['rate_percentage'];
         $nPAllowance->effective_from = $request['effective_from'];
@@ -73,8 +85,12 @@ class NonPracticingAllowanceRateController extends Controller
         try {
             $nPAllowance->save();
 
+            $nPAllowance->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Non Practicing Allowance Rate Updated!', 'data' => $nPAllowance]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

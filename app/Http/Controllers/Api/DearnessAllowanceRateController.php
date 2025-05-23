@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DearnesAllowanceRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DearnessAllowanceRateController extends Controller
 {
@@ -21,6 +22,13 @@ class DearnessAllowanceRateController extends Controller
         $data = $query->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function show($id)
+    {
+        $data = DearnesAllowanceRate::with('history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
@@ -63,6 +71,10 @@ class DearnessAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $dearnessAllowance->toArray();
+
         $dearnessAllowance->rate_percentage = $request['rate_percentage'];
         $dearnessAllowance->pwd_rate_percentage = $request['pwd_rate_percentage'];
         $dearnessAllowance->effective_from = $request['effective_from'];
@@ -73,8 +85,12 @@ class DearnessAllowanceRateController extends Controller
         try {
             $dearnessAllowance->save();
 
+            $dearnessAllowance->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Dearness Allowance Rate Updated!', 'data' => $dearnessAllowance]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

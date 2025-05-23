@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\EmployeeStatus;
 use App\Models\PensionerInformation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PensionerController extends Controller
 {
@@ -118,9 +119,7 @@ class PensionerController extends Controller
      */
     public function show(string $id)
     {
-        $pensioner = PensionerInformation::with('employee')->find($id);
-
-        if (!$pensioner) return response()->json(['message' => 'Pensioner data not found!'], 404);
+        $pensioner = PensionerInformation::with('employee', 'addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
 
         return response()->json([
             'message' => 'Fetch pensioner data successfully',
@@ -179,6 +178,10 @@ class PensionerController extends Controller
             ], 400);
         }
 
+        DB::beginTransaction();
+
+        $old_data  = $pensioner->toArray();
+
         $pensioner->ppo_no = $request['ppo_no'];
         $pensioner->name = $request['name'];
         $pensioner->type_of_pension = $request['type_of_pension'];
@@ -203,11 +206,16 @@ class PensionerController extends Controller
 
         try {
             $pensioner->save();
+
+            $pensioner->history()->create($old_data);
+
+            DB::commit();
             return response()->json([
                 'message' => 'Pensioner detail updated successfully!',
                 'data' => $pensioner
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => $e->getMessage(),
             ], 500);
@@ -232,16 +240,24 @@ class PensionerController extends Controller
             'status' => 'required|in:Active,Expired,Suspended'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $pensioner->toArray;
 
         $pensioner->status = $request['status'];
 
         try {
             $pensioner->save();
+
+            $pensioner->history->create($old_data);
+
+            DB::commit();
             return response()->json([
                 'message' => 'Pensioner status change successfully!',
                 'data' => $pensioner
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => $e->getMessage(),
             ], 500);

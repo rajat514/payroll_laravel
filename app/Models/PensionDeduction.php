@@ -11,6 +11,10 @@ class PensionDeduction extends Model
 {
     use HasFactory;
 
+    public function history(): HasMany
+    {
+        return $this->hasMany(PensionDeductionClone::class);
+    }
 
     public function addedBy(): BelongsTo
     {

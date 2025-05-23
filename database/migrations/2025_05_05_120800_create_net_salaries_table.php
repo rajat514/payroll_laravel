@@ -18,9 +18,10 @@ return new class extends Migration
             $table->integer('year');
             $table->date('processing_date');
             $table->float('net_amount', 12, 2);
-            $table->date('payment_date');
+            $table->date('payment_date')->nullable();
             $table->foreignId('employee_bank_id')->constrained('employee_bank_accounts');
-            $table->foreignId('varified_by')->constrained('users');
+            $table->boolean('is_verified')->default(0);
+            $table->foreignId('verified_by')->nullable()->constrained('users');
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();

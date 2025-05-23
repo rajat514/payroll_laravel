@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\UniformAllowanceRate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UniformAllowanceRateController extends Controller
 {
@@ -21,6 +22,13 @@ class UniformAllowanceRateController extends Controller
         $data = $query->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function show($id)
+    {
+        $data = UniformAllowanceRate::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
@@ -63,6 +71,10 @@ class UniformAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        DB::beginTransaction();
+
+        $old_data = $uniformAllowance->toArray();
+
         $uniformAllowance->applicable_post = $request['applicable_post'];
         $uniformAllowance->amount = $request['amount'];
         $uniformAllowance->effective_from = $request['effective_from'];
@@ -73,8 +85,12 @@ class UniformAllowanceRateController extends Controller
         try {
             $uniformAllowance->save();
 
+            $uniformAllowance->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Uniform Allowance Rate Created!', 'data' => $uniformAllowance]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

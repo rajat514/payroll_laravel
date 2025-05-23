@@ -16,13 +16,18 @@ class Quarter extends Model
         return $this->hasMany(EmployeeQuarter::class);
     }
 
-    function addby(): BelongsTo
+    function history(): HasMany
     {
-        return $this->belongsTo(User::class, 'added_by', 'id');
+        return $this->hasMany(QuarterClone::class);
     }
 
-    function editby(): BelongsTo
+    public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name', 'role_id');
+    }
+
+    public function editedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
 }

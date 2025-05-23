@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Employee;
+use App\Models\EmployeeClone;
 use App\Models\EmployeeStatus;
+use Illuminate\Support\Facades\DB;
 
 class EmployeeController extends Controller
 {
@@ -15,7 +17,7 @@ class EmployeeController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $data = Employee::with('addby:id,name,role_id', 'editby:id,name,role_id');
+        $data = Employee::with('addedBy:id,name,role_id', 'editedBy:id,name,role_id');
 
         $data->when(
             request('search'),
@@ -77,6 +79,9 @@ class EmployeeController extends Controller
             ]
         );
 
+
+        DB::beginTransaction();
+
         $employee = new Employee();
         $employee->first_name = $request['first_name'];
         $employee->last_name = $request['last_name'];
@@ -98,9 +103,10 @@ class EmployeeController extends Controller
         $employee->npa_eligibility = $request['npa_eligibility'];
         $employee->added_by = auth()->id();
 
-        try {
-            $employee->save();
 
+        try {
+
+            $employee->save();
             $status = $employee->employeeStatus()->create([
                 'status' => $request['status'],
                 'effective_from' => $request['effective_from'],
@@ -109,11 +115,13 @@ class EmployeeController extends Controller
                 'order_reference' => $request['order_reference'],
                 'added_by' => auth()->id()
             ]);
+            DB::commit();
             return response()->json([
                 'successMsg' => 'Employee Created!',
                 'data' => [$employee, $status]
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
@@ -146,8 +154,8 @@ class EmployeeController extends Controller
                 'npa_eligibility' => 'required|in:1,0',
                 'pancard' => [
                     'required',
+                    'regex:/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/',
                     "unique:employees,pancard,$id,id",
-                    'regex:/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/'
                 ]
             ],
             [
@@ -155,6 +163,14 @@ class EmployeeController extends Controller
             ]
         );
 
+        DB::beginTransaction();
+
+        // $employeeClone = $employee->replicate();
+        // $employeeUpdatedBy = new EmployeeClone($employeeClone->toArray());
+        // $employeeUpdatedBy->employee_id = $id;
+        // $employeeUpdatedBy = $employeeClone->toArray();
+        $old_data = $employee->toArray();
+        // unset($old_data['id']);
 
         $employee->first_name = $request['first_name'];
         $employee->last_name = $request['last_name'];
@@ -179,27 +195,31 @@ class EmployeeController extends Controller
 
         try {
             $employee->save();
+            $employee->history()->create($old_data);
+
+            DB::commit();
             return response()->json([
                 'successMsg' => 'Employee Updated!',
                 'data' => $employee
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 
-    function destroy($id)
-    {
-        $employee = Employee::find($id);
-        if (!$employee) return response()->json(['errorMsg' => 'Employee Not Found!']);
+    // function destroy($id)
+    // {
+    //     $employee = Employee::find($id);
+    //     if (!$employee) return response()->json(['errorMsg' => 'Employee Not Found!']);
 
-        try {
-            $employee->delete();
-            return response()->json(['successMsg' => 'Employee Deleted!']);
-        } catch (\Exception $e) {
-            return response()->json(['errorMsg' => $e->getMessage()], 500);
-        }
-    }
+    //     try {
+    //         $employee->delete();
+    //         return response()->json(['successMsg' => 'Employee Deleted!']);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['errorMsg' => $e->getMessage()], 500);
+    //     }
+    // }
 
     function show($id)
     {
@@ -210,10 +230,12 @@ class EmployeeController extends Controller
             'netSalary',
             'employeePayStructure',
             'employeeQuarter',
-            'addby:id,name,role_id',
-            'editby:id,name,role_id'
+            'addedBy:id,name,role_id',
+            'editedBy:id,name,role_id',
         )->find($id);
         if (!$data) return response()->json(['errorMsg' => 'Employee not found!'], 404);
+
+        // $employee_updated_history = Employee
 
         return response()->json(['data' => $data]);
     }

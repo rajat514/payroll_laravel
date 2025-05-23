@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PayMatrixLevel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PayMatrixLevelController extends Controller
 {
@@ -14,7 +15,7 @@ class PayMatrixLevelController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PayMatrixLevel::query();
+        $query = PayMatrixLevel::with('payMatrixCell');
 
         $total_count = $query->count();
 
@@ -23,11 +24,18 @@ class PayMatrixLevelController extends Controller
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
+    function show($id)
+    {
+        $data = PayMatrixLevel::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+
+        return response()->json(['data' => $data]);
+    }
+
     function store(Request $request)
     {
         $request->validate([
             'name' => ['required', 'string', 'regex:/^(?:\d{1,2}[A-Z]|\d+)$/', 'unique:pay_matrix_levels'],
-            'description' => 'required|string|min:3|max:191',
+            'description' => 'nullable|string|max:191',
 
         ]);
 
@@ -51,9 +59,13 @@ class PayMatrixLevelController extends Controller
         if (!$payMatrixLevel) return response()->json(['errorMsg' => 'Pay Matrix Level not found!']);
 
         $request->validate([
-            'name' => ['required|string', 'regex:^\d{1,2}[A-Z]$', "unique:pay_matrix_levels,$id,id"],
-            'description' => 'required|string|min:3|max:191'
+            'name' => ['required', 'string', 'regex:/^(?:\d{1,2}[A-Z]|\d+)$/', "unique:pay_matrix_levels,name,$id,id"],
+            'description' => 'nullable|string|max:191'
         ]);
+
+        DB::beginTransaction();
+
+        $old_data = $payMatrixLevel->toArray();
 
         $payMatrixLevel->name = $request['name'];
         $payMatrixLevel->description = $request['description'];
@@ -62,8 +74,12 @@ class PayMatrixLevelController extends Controller
         try {
             $payMatrixLevel->save();
 
+            $payMatrixLevel->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Pay Matrix Level Updated!', 'data' => $payMatrixLevel]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PensionerDocuments;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PensionDocumentController extends Controller
 {
@@ -78,7 +79,9 @@ class PensionDocumentController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $data = PensionerDocuments::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy',)->find($id);
+
+        return response()->json(['data' => $data]);
     }
 
     /**
@@ -117,8 +120,12 @@ class PensionDocumentController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/pension'), $fileName);
+            $file->move('uploads/pension', $fileName);
         }
+
+        DB::beginTransaction();
+
+        $old_data = $data->toArray();
 
         $data->pensioner_id = $request['pensioner_id'];
         $data->document_type = $request['document_type'];
@@ -131,8 +138,13 @@ class PensionDocumentController extends Controller
 
         try {
             $data->save();
+
+            $data->history()->create($old_data);
+
+            DB::commit();
             return response()->json(['successMsg' => 'Document updated successfully', 'data' => $data], 201);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
