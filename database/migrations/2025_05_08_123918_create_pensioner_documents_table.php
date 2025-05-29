@@ -20,6 +20,8 @@ return new class extends Migration
             $table->date('expiry_date')->nullable();
             $table->string('file_path', 50);
             $table->timestamp('upload_date')->nullable();
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

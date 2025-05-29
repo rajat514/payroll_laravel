@@ -13,19 +13,65 @@ class EmployeeController extends Controller
 {
     function index()
     {
+        $user = auth()->user();
         $page = request('page') ? (int)request('page') : 1;
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $data = Employee::with('addedBy:id,name,role_id', 'editedBy:id,name,role_id');
+        // if (auth()->user()->isAdmin()) {
+        // return response()->json(['data 1' => $user->institute]);
+        // }
 
-        $data->when(
+        $query = Employee::with('addedBy:id,name,role_id', 'editedBy:id,name,role_id', 'employeeStatus');
+
+        $query->when(
             request('search'),
             fn($q) => $q->where('first_name', 'LIKE', '%' . request('search') . '%')
                 ->orwhere('last_name', 'LIKE', '%' . request('search') . '%')
         );
 
-        $data->when(
+        // $query->where(
+        //     'institute',
+        //     $user->institute
+        // );
+        // $query->employeeStatus;
+
+        $query->when(
+            request('pwd_status') !== null,
+            fn($q) => $q->where('pwd_status', request('pwd_status'))
+        );
+
+        $query->when(
+            request('gis_eligibility') !== null,
+            fn($q) => $q->where('gis_eligibility', request('gis_eligibility'))
+        );
+
+        $query->when(
+            request('credit_society_member') !== null,
+            fn($q) => $q->where('credit_society_member', request('credit_society_member'))
+        );
+
+        $query->when(
+            request('uniform_allowance_eligibility') !== null,
+            fn($q) => $q->where('uniform_allowance_eligibility', request('uniform_allowance_eligibility'))
+        );
+
+        $query->when(
+            request('hra_eligibility') !== null,
+            fn($q) => $q->where('hra_eligibility', request('hra_eligibility'))
+        );
+
+        $query->when(
+            request('npa_eligibility') !== null,
+            fn($q) => $q->where('npa_eligibility', request('npa_eligibility'))
+        );
+
+        $query->when(
+            request('pension_scheme'),
+            fn($q) => $q->where('pension_scheme', request('pension_scheme'))
+        );
+
+        $query->when(
             request('current_status'),
             fn($q) => $q->whereHas(
                 'employeeStatus',
@@ -35,9 +81,9 @@ class EmployeeController extends Controller
             )
         );
 
-        $total_count = $data->count();
+        $total_count = $query->count();
 
-        $data = $data->offset($offset)->limit($limit)->get();
+        $data = $query->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -232,6 +278,8 @@ class EmployeeController extends Controller
             'employeeQuarter',
             'addedBy:id,name,role_id',
             'editedBy:id,name,role_id',
+            'history.addedBy',
+            'history.editedBy'
         )->find($id);
         if (!$data) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 

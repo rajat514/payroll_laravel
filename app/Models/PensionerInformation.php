@@ -36,4 +36,9 @@ class PensionerInformation extends Model
     {
         return $this->hasOne(\App\Models\BankAccount::class);
     }
+
+    public function Arrears(): HasMany
+    {
+        return $this->hasMany(\App\Models\Arrears::class, 'pensioner_id');
+    }
 }

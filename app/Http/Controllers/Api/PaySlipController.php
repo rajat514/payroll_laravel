@@ -228,6 +228,7 @@ class PaySlipController extends Controller
         $net_salary->net_amount = $totalBasicSalary;
         try {
             $net_salary->save();
+            DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);

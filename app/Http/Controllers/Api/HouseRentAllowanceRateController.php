@@ -34,6 +34,9 @@ class HouseRentAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        $isSmallDate = HouseRentAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
         $houseRentAllowance = new HouseRentAllowanceRate();
         $houseRentAllowance->city_class = $request['city_class'];
         $houseRentAllowance->rate_percentage = $request['rate_percentage'];
@@ -63,6 +66,10 @@ class HouseRentAllowanceRateController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
+
+        $isSmallDate = HouseRentAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
 
         DB::beginTransaction();
 

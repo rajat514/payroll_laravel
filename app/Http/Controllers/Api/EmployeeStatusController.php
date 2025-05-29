@@ -21,9 +21,11 @@ class EmployeeStatusController extends Controller
             'order_reference' => 'nullable|string|max:255',
         ]);
 
-        if ($request['effective_till'] && $request['effective_till'] <= $request['effective_from']) {
-            return response()->json(['errorMsg' => 'Effective till must be greater than effective from'], 400);
-        }
+        $isSmallDate = EmployeeStatus::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+        // if ($request['effective_till'] && $request['effective_till'] <= $request['effective_from']) {
+        //     return response()->json(['errorMsg' => 'Effective till must be greater than effective from'], 400);
+        // }
         $employee = EmployeeStatus::where('employee_id', $request['employee_id'])->get()->last();
         $employee->effective_till = $request['effective_from'];
 
@@ -67,6 +69,9 @@ class EmployeeStatusController extends Controller
             'order_reference' => 'nullable|string|max:255',
         ]);
 
+        $isSmallDate = EmployeeStatus::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
         DB::beginTransaction();
 
         $old_data = $employeeStatus->toArray();
@@ -81,7 +86,7 @@ class EmployeeStatusController extends Controller
         try {
             $employeeStatus->save();
 
-            $employeeStatus->history->create($old_data);
+            $employeeStatus->history()->create($old_data);
 
             DB::commit();
             return response()->json(['successMsg' => 'Employee Status Updated!', 'data' => $employeeStatus]);
@@ -101,9 +106,19 @@ class EmployeeStatusController extends Controller
 
         $query->when('employee_id', fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%'));
 
+        // $query->when(
+        //     request('current_status'),
+        //     fn($q) => $q->whereHas(
+        //         'employeeStatus',
+        //         fn($qn) => $qn->where('status', request('current_status'))
+        //             ->whereDate('effective_from', '<=', date('Y-m-d'))
+        //             ->whereDate('effective_till', '>=', date('Y-m-d'))
+        //     )
+        // );
+
         $total_count = $query->count();
 
-        $data = $query->orderBy('effective_from', 'DESC')->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }

@@ -13,17 +13,14 @@ class MonthlyPensionClone extends Model
 
     protected $fillable = [
         'monthly_pension_id',
-        'pensioner_id',
-        'month',
+        'pension_rel_info_id',
+        'net_pension_id',
         'basic_pension',
-        'commutation_amount',
         'additional_pension',
         'dr_id',
         'dr_amount',
         'medical_allowance',
         'total_pension',
-        'total_recovery',
-        'net_pension',
         'remarks',
         'status',
         'added_by',
@@ -41,18 +38,23 @@ class MonthlyPensionClone extends Model
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
 
-    public function pensioner()
+    public function pensioner(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\PensionerInformation::class);
+        return $this->belongsTo(PensionerInformation::class)->select('id', 'name', 'ppo_no');
     }
 
-    public function dr()
+    public function dearness(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\DearnessRelief::class);
+        return $this->belongsTo(DearnessRelief::class, 'dr_id')->select('id', 'dr_percentage');
     }
 
     public function dedcution()
     {
         return $this->hasMany(\App\Models\PensionDeduction::class);
+    }
+
+    public function netPension(): BelongsTo
+    {
+        return $this->belongsTo(NetPension::class)->select('id', 'net_pension', 'pensioner_id');
     }
 }

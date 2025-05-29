@@ -3,7 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
+use App\Models\DearnessRelief;
 use App\Models\MonthlyPension;
+use App\Models\NetPension;
+use App\Models\PensionDeduction;
+use App\Models\PensionRelatedInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +24,7 @@ class MonthlyPensionController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = MonthlyPension::with('pensioner', 'dr', 'addedBy.role', 'editedBy.role');
+        $query = MonthlyPension::with('netPension', 'dearness', 'pensionRelatedInfo', 'netPension.pensioner');
 
         $total_count = $query->count();
 
@@ -36,76 +41,76 @@ class MonthlyPensionController extends Controller
     {
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
-            'month' => 'required|date',
-            'basic_pension' => 'required|numeric',
-            'commutation_amount' => 'required|numeric',
-            'additional_pension' => 'required|numeric',
+            'pensioner_bank_id' => 'required|exists:bank_accounts,id',
+            'month' => 'required|numeric|max:12|min:1',
+            'year' => 'required|numeric|digits:4',
+            'processing_date' => 'required|date',
+            'payment_date' => 'nullable|date|after:processing_date',
+
+
+            'pension_related_info_id' => 'required|exists:pension_related_infos,id',
             'dr_id' => 'nullable|exists:dearness_reliefs,id',
-            'dr_amount' => 'nullable|numeric',
-            'medical_allowance' => 'required|numeric',
             'remarks' => 'nullable|string|max:255',
             'status' => 'required|in:Pending,Processed,Paid',
-        ], [
-            'pensioner_id.required' => 'Please select a pensioner.',
-            'pensioner_id.exists' => 'The selected pensioner does not exist.',
-
-            'month.required' => 'Please provide the month.',
-            'month.date' => 'The month must be a valid date.',
-
-            'basic_pension.required' => 'Basic pension is required.',
-            'basic_pension.numeric' => 'Basic pension must be a number.',
-
-            'commutation_amount.required' => 'Commutation amount is required.',
-            'commutation_amount.numeric' => 'Commutation amount must be numeric.',
-
-            'additional_pension.required' => 'Additional pension is required.',
-            'additional_pension.numeric' => 'Additional pension must be numeric.',
-
-            'dr_id.exists' => 'The selected dearness relief is invalid.',
-
-            'dr_amount.numeric' => 'Dearness relief amount must be numeric.',
-
-            'medical_allowance.required' => 'Medical allowance is required.',
-            'medical_allowance.numeric' => 'Medical allowance must be numeric.',
-
-            'remarks.string' => 'Remarks must be a string.',
-            'remarks.max' => 'Remarks may not be greater than 255 characters.',
-
-            'status.required' => 'Status is required.',
-            'status.in' => 'Status must be one of: Pending, Processed, or Paid.',
         ]);
 
-        $formattedMonth = \Carbon\Carbon::parse($request->month)->startOfMonth()->format('Y-m-d');
+        $hasNetPension = MonthlyPension::where('net_pension_id')->get()->first();
+        if ($hasNetPension) return response()->json(['errorMsg' => 'This net pension is already added in monthly pension!. Please select another net pension.'], 400);
+
+        $pensionInfo = PensionRelatedInfo::find($request['pension_related_info_id']);
+        if (!$pensionInfo) return response()->json(['errorMsg' => 'Pension Related Information not found!'], 404);
+
+        $drRate = DearnessRelief::find($request['dr_id']);
+        if (!$drRate) return response()->json(['errorMsg' => 'Dearness Relief not found!'], 404);
+
+        $pensionBank = BankAccount::where('pensioner_id', $request['pensioner_id'])->where('is_active', 1)->orderBy('created_at', 'DESC')->first();
+        if (!$pensionBank) return response()->json(['errorMsg', 'Pensioner Bank not found!'], 404);
+
+        DB::beginTransaction();
+
+        $drAmount = ($pensionInfo->basic_pension + $pensionInfo->additional_pension) * $drRate->dr_percentage / 100;
 
         // Calculate totals
-        $drAmount = $request->dr_amount ?? 0;
-        $totalPension = $request->basic_pension + $request->additional_pension + $drAmount + $request->medical_allowance;
-        $totalRecovery = $request->commutation_amount;
-        $netPension = $totalPension - $totalRecovery;
+        $total = $pensionInfo->basic_pension + $pensionInfo->additional_pension + $drAmount + $pensionInfo->medical_allowance + $pensionInfo->total_arrear;
+
+        $netPension = new NetPension();
+        $netPension->pensioner_id = $request['pensioner_id'];
+        $netPension->pensioner_bank_id = $request['pensioner_bank_id'];
+        $netPension->month = $request['month'];
+        $netPension->year = $request['year'];
+        $netPension->processing_date = $request['processing_date'];
+        $netPension->payment_date = $request['payment_date'];
+        $netPension->net_pension = $total;
+
+        try {
+            $netPension->save();
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
+        }
+
 
         $data = new MonthlyPension();
-        $data->pensioner_id = $request['pensioner_id'];
-        $data->month = $formattedMonth;
-        $data->basic_pension = $request['basic_pension'];
-        $data->commutation_amount = $request['commutation_amount'];
-        $data->additional_pension = $request['additional_pension'];
+        $data->net_pension_id = $netPension->id;
+        $data->pension_rel_info_id = $request['pension_related_info_id'];
+        $data->basic_pension = $pensionInfo->basic_pension;
+        $data->additional_pension = $pensionInfo->aditional_pension;
         $data->dr_id = $request['dr_id'];
         $data->dr_amount = $drAmount;
-        $data->medical_allowance = $request['medical_allowance'];
-        $data->total_pension = $totalPension;
-        $data->total_recovery = $totalRecovery;
-        $data->net_pension = $netPension;
+        $data->medical_allowance = $pensionInfo->medical_allowance;
+        $data->total_arrear = $pensionInfo->total_arrear;
+        $data->total_pension = $total;
         $data->remarks = $request['remarks'];
         $data->status = $request['status'];
         $data->added_by = auth()->id();
 
         try {
             $data->save();
-            return response()->json([
-                'successMsg' => 'Monthly Pension create successfully!',
-                'data' => $data
-            ], 200);
+            DB::commit();
+            return response()->json(['successMsg' => 'Monthly Pension create successfully!', 'data' => $data], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'errorMsg' => $e->getMessage()
             ], 500);
@@ -117,17 +122,9 @@ class MonthlyPensionController extends Controller
      */
     public function show(string $id)
     {
-        $data = MonthlyPension::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = MonthlyPension::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.netPension', 'history.netPension.pensioner', 'history.dearness')->find($id);
 
         return response()->json(['data' => $data]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
     }
 
     /**
@@ -135,86 +132,66 @@ class MonthlyPensionController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $data = MonthlyPension::find($id);
+        $monthlyPension = MonthlyPension::find($id);
+        if (!$monthlyPension) return response()->json(['errorMsg' => 'Monthly Pension not found!'], 404);
 
-        if (!$data) return response()->json(['errorMsg' => 'Monthly pension not found!'], 404);
 
         $request->validate([
-            'pensioner_id' => 'required|exists:pensioner_information,id',
-            'month' => 'required|date',
-            'basic_pension' => 'required|numeric',
-            'commutation_amount' => 'required|numeric',
-            'additional_pension' => 'required|numeric',
+            'net_pension_id' => 'required|exists:net_pensions,id',
+            'pension_related_info_id' => 'required|exists:pension_related_infos,id',
             'dr_id' => 'nullable|exists:dearness_reliefs,id',
-            'dr_amount' => 'nullable|numeric',
-            'medical_allowance' => 'required|numeric',
             'remarks' => 'nullable|string|max:255',
             'status' => 'required|in:Pending,Processed,Paid',
-        ], [
-            'pensioner_id.required' => 'Please select a pensioner.',
-            'pensioner_id.exists' => 'The selected pensioner does not exist.',
-
-            'month.required' => 'Please provide the month.',
-            'month.date' => 'The month must be a valid date.',
-
-            'basic_pension.required' => 'Basic pension is required.',
-            'basic_pension.numeric' => 'Basic pension must be a number.',
-
-            'commutation_amount.required' => 'Commutation amount is required.',
-            'commutation_amount.numeric' => 'Commutation amount must be numeric.',
-
-            'additional_pension.required' => 'Additional pension is required.',
-            'additional_pension.numeric' => 'Additional pension must be numeric.',
-
-            'dr_id.exists' => 'The selected dearness relief is invalid.',
-
-            'dr_amount.numeric' => 'Dearness relief amount must be numeric.',
-
-            'medical_allowance.required' => 'Medical allowance is required.',
-            'medical_allowance.numeric' => 'Medical allowance must be numeric.',
-
-            'remarks.string' => 'Remarks must be a string.',
-            'remarks.max' => 'Remarks may not be greater than 255 characters.',
-
-            'status.required' => 'Status is required.',
-            'status.in' => 'Status must be one of: Pending, Processed, or Paid.',
         ]);
 
-        $formattedMonth = \Carbon\Carbon::parse($request->month)->startOfMonth()->format('Y-m-d');
+        $hasNetPension = MonthlyPension::where('net_pension_id')->get()->first();
+        if ($hasNetPension) return response()->json(['errorMsg' => 'This net pension is already added in monthly pension!. Please select another net pension.'], 400);
+
+        $netPension = NetPension::with('pensionerDeduction')->find($request['net_pension_id']);
+        if (!$netPension) return response()->json(['errorMsg' => 'Net Pension not found!'], 404);
+
+        $pensionInfo = PensionRelatedInfo::find($request['pension_related_info_id']);
+        if (!$pensionInfo) return response()->json(['errorMsg' => 'Monthly pension not found!'], 404);
+
+        $drRate = DearnessRelief::find($request['dr_id']);
+        if (!$drRate) return response()->json(['errorMsg' => 'Dearness Relief not found!'], 404);
+
+        $drAmount = ($pensionInfo->basic_pension + $pensionInfo->additional_pension) * $drRate->dr_percentage / 100;
+
+        $total = $pensionInfo->basic_pension + $pensionInfo->additional_pension + $drAmount + $pensionInfo->medical_allowance + $pensionInfo->total_arrear;
 
         DB::beginTransaction();
 
-        $old_data = $data->toArray();
+        $old_data = $monthlyPension->toArray();
 
-        // Calculate totals
-        $drAmount = $request->dr_amount ?? 0;
-        $totalPension = $request->basic_pension + $request->additional_pension + $drAmount + $request->medical_allowance;
-        $totalRecovery = $request->commutation_amount;
-        $netPension = $totalPension - $totalRecovery;
-
-        $data->pensioner_id = $request['pensioner_id'];
-        $data->month = $formattedMonth;
-        $data->basic_pension = $request['basic_pension'];
-        $data->commutation_amount = $request['commutation_amount'];
-        $data->additional_pension = $request['additional_pension'];
-        $data->dr_id = $request['dr_id'];
-        $data->dr_amount = $drAmount;
-        $data->medical_allowance = $request['medical_allowance'];
-        $data->total_pension = $totalPension;
-        $data->total_recovery = $totalRecovery;
-        $data->net_pension = $netPension;
-        $data->remarks = $request['remarks'];
-        $data->status = $request['status'];
-        $data->edited_by = auth()->id();
+        $monthlyPension->net_pension_id = $request['net_pension_id'];
+        $monthlyPension->pension_rel_info_id = $request['pension_related_info_id'];
+        $monthlyPension->basic_pension = $pensionInfo->basic_pension;
+        $monthlyPension->additional_pension = $pensionInfo->additional_pension;
+        $monthlyPension->dr_id = $request['dr_id'];
+        $monthlyPension->dr_amount = $drAmount;
+        $monthlyPension->medical_allowance = $pensionInfo->medical_allowance;
+        $monthlyPension->total_arrear = $pensionInfo->total_arrear;
+        $monthlyPension->total_pension = $total;
+        $monthlyPension->remarks = $request['remarks'];
+        $monthlyPension->status = $request['status'];
+        $monthlyPension->edited_by = auth()->id();
 
         try {
-            $data->save();
+            $monthlyPension->save();
 
-            $data->history()->create($old_data);
+            if ($netPension->pensionerDeduction) {
+                $netPension->net_pension = $monthlyPension->total_pension - $netPension->pensionerDeduction->amount;
+            }
+
+            $netPension->save();
+
+            $monthlyPension->history()->create($old_data);
+
             DB::commit();
             return response()->json([
                 'successMsg' => 'Monthly Pension update successfully!',
-                'data' => $data
+                'data' => $monthlyPension
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();

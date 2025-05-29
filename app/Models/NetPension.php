@@ -6,15 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class PensionDeduction extends Model
+class NetPension extends Model
 {
     use HasFactory;
-
-    public function history(): HasMany
-    {
-        return $this->hasMany(PensionDeductionClone::class);
-    }
 
     public function addedBy(): BelongsTo
     {
@@ -26,18 +22,23 @@ class PensionDeduction extends Model
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
 
-    public function monthlyPension(): BelongsTo
+    public function monthlyPension(): HasOne
     {
-        return $this->belongsTo(\App\Models\MonthlyPension::class);
+        return $this->hasOne(MonthlyPension::class);
     }
 
-    public function netPension(): BelongsTo
+    public function pensionerDeduction(): HasOne
     {
-        return $this->belongsTo(NetPension::class)->select('id', 'pensioner_id', 'net_pension');
+        return $this->hasOne(PensionDeduction::class);
     }
 
-    public function pensionerDocuments(): HasMany
+    public function history(): HasMany
     {
-        return $this->hasMany(\App\Models\PensionerDocuments::class);
+        return $this->hasMany(NetPensionClone::class);
+    }
+
+    public function pensioner(): BelongsTo
+    {
+        return $this->belongsTo(PensionerInformation::class)->select('id', 'name', 'ppo_no');
     }
 }

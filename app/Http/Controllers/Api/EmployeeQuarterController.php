@@ -50,6 +50,12 @@ class EmployeeQuarterController extends Controller
         $checkQuarter = EmployeeQuarter::where('quarter_id', $request['quarter_id'])->value('id');
         if ($checkQuarter) return response()->json(['errorMsg' => 'This Quarter has already alloted!']);
 
+        $isSmallAllotmentDate = EmployeeQuarter::where('date_of_allotment', '>=', $request['date_of_allotment'])->get()->first();
+        if ($isSmallAllotmentDate) return response()->json(['errorMsg' => 'Date of allotment is smaller than previous!'], 400);
+
+        $isSmallOccupationDate = EmployeeQuarter::where('date_of_occupation', '>=', $request['date_of_occupation'])->get()->first();
+        if ($isSmallOccupationDate) return response()->json(['errorMsg' => 'Date of occupation is smaller than previous!'], 400);
+
         $employeeQuarter = new EmployeeQuarter();
         $employeeQuarter->employee_id = $request['employee_id'];
         $employeeQuarter->quarter_id = $request['quarter_id'];

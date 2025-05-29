@@ -54,9 +54,10 @@ class ArrearsController extends Controller
             'additional_arrear' => 'required|numeric',
             'dr_percentage' => 'required|numeric',
             'dr_arrear' => 'required|numeric',
-            'total_arrear' => 'required|numeric',
             'remarks' => 'required|string|max:255',
         ]);
+
+        $total = $request['basic_arrear'] + $request['additional_arrear'] + $request['dr_arrear'];
 
 
         $data = new Arrears();
@@ -68,7 +69,7 @@ class ArrearsController extends Controller
         $data->additional_arrear = $request['additional_arrear'];
         $data->dr_percentage = $request['dr_percentage'];
         $data->dr_arrear = $request['dr_arrear'];
-        $data->total_arrear = $request['total_arrear'];
+        $data->total_arrear = $total;
         $data->remarks = $request['remarks'];
         $data->added_by = auth()->id();
 
@@ -90,7 +91,7 @@ class ArrearsController extends Controller
      */
     public function show($id)
     {
-        $data = Arrears::with('history.addBy', 'history.editBy')->find($id);
+        $data = Arrears::with('history.addedBy', 'history.editedBy', 'pensioner', 'history.pensioner')->find($id);
 
         return response()->json(['data' => $data]);
     }
@@ -120,9 +121,10 @@ class ArrearsController extends Controller
             'additional_arrear' => 'required|numeric',
             'dr_percentage' => 'required|numeric',
             'dr_arrear' => 'required|numeric',
-            'total_arrear' => 'required|numeric',
             'remarks' => 'required|string|max:255',
         ]);
+
+        $total = $request['basic_arrear'] + $request['additional_arrear'] + $request['dr_arrear'];
 
         DB::beginTransaction();
 
@@ -136,7 +138,7 @@ class ArrearsController extends Controller
         $data->additional_arrear = $request['additional_arrear'];
         $data->dr_percentage = $request['dr_percentage'];
         $data->dr_arrear = $request['dr_arrear'];
-        $data->total_arrear = $request['total_arrear'];
+        $data->total_arrear = $total;
         $data->remarks = $request['remarks'];
         $data->edited_by = auth()->id();
 

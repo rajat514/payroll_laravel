@@ -130,7 +130,7 @@ class BankAccountController extends Controller
             $bank->history()->create($old_data);
 
             DB::commit();
-            return response()->json(['data' => $bank], 200);
+            return response()->json(['successMsg' => 'Bank status successfully changed!']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);

@@ -23,6 +23,8 @@ return new class extends Migration
             $table->float('dr_arrear', 10, 2);
             $table->float('total_arrear', 10, 2);
             $table->string('remarks', 255);
+            $table->foreignId('added_by')->nullable()->constrained('users');
+            $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('updated_at')->useCurrent()->useCurrentOnUpdate();
         });

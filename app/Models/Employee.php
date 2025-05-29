@@ -61,13 +61,13 @@ class Employee extends Model
         return $this->hasMany(EmployeeClone::class);
     }
 
-    function addedBy(): BelongsTo
+    public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by', 'id');
+        return $this->belongsTo(User::class, 'added_by')->select('id', 'name', 'role_id');
     }
 
-    function editedBy(): BelongsTo
+    public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id');
+        return $this->belongsTo(User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
 }

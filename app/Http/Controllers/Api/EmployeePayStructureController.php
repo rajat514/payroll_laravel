@@ -31,7 +31,14 @@ class EmployeePayStructureController extends Controller
 
     function show($id)
     {
-        $data = EmployeePayStructure::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.PayMatrixCell.payMatrixLevel')->find($id);
+        $data = EmployeePayStructure::with(
+            'addedBy',
+            'editedBy',
+            'history.addedBy',
+            'history.editedBy',
+            'history.employee',
+            'history.PayMatrixCell.payMatrixLevel'
+        )->find($id);
 
         return response()->json(['data' => $data]);
     }
@@ -46,6 +53,9 @@ class EmployeePayStructureController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
+
+        $isSmallDate = EmployeePayStructure::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         $payStructure = new EmployeePayStructure();
         $payStructure->employee_id = $request['employee_id'];
@@ -77,6 +87,9 @@ class EmployeePayStructureController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
+
+        $isSmallDate = EmployeePayStructure::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

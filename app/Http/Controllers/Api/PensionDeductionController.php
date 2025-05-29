@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\NetPension;
+use App\Models\NetSalary;
 use App\Models\PensionDeduction;
+use App\Models\PensionRelatedInfo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +22,7 @@ class PensionDeductionController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PensionDeduction::with('monthlyPension', 'addedBy.role', 'editedBy.role');
+        $query = PensionDeduction::with('netPension', 'addedBy.role', 'editedBy.role', 'netPension.pensioner');
 
         $total_count = $query->count();
 
@@ -42,21 +45,40 @@ class PensionDeductionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'pension_id' => 'required|exists:monthly_pensions,id',
-            'deduction_type' => 'required|in:Income Tax,Recovery,Other',
-            'amount' => 'required|numeric',
-            'description' => 'string'
+            'net_pension_id' => 'required|exists:net_pensions,id',
+            'income_tax' => 'nullable|numeric',
+            'recovery' => 'nullable|numeric',
+            'other' => 'nullable|numeric',
+            'description' => 'nullable|string'
         ]);
 
+        $hasNetPension = PensionDeduction::where('net_pension_id')->get()->first();
+        if ($hasNetPension) return response()->json(['errorMsg' => 'This net pension is already added in deduction!. Please select another net pension.'], 400);
+
+        $netPension = NetPension::with('monthlyPension')->find($request['net_pension_id']);
+        if (!$netPension) return response()->json(['errorMsg' => 'Net Pension not found!'], 404);
+
+        $pensionInfo = PensionRelatedInfo::find($netPension->monthlyPension->pension_rel_info_id);
+        if (!$pensionInfo) return response()->json(['errorMsg' => 'Pension Related Information not found!'], 404);
+
+        $total = $pensionInfo->commutation_amount + $request['income_tax'] + $request['recovery'] + $request['other'];
+
         $data = new PensionDeduction();
-        $data->pension_id = $request['pension_id'];
-        $data->deduction_type = $request['deduction_type'];
-        $data->amount = $request['amount'];
+        $data->net_pension_id = $request['net_pension_id'];
+        $data->commutation_amount = $pensionInfo->commutation_amount;
+        $data->income_tax = $request['income_tax'];
+        $data->recovery = $request['recovery'];
+        $data->other = $request['other'];
+        $data->amount = $total;
         $data->description = $request['description'];
         $data->added_by = auth()->id();
 
         try {
             $data->save();
+
+            $netPension->net_pension = $netPension->monthlyPension->total_pension - $total;
+
+            $netPension->save();
             return response()->json([
                 'successMsg' => 'Pension Deduction create successfully!',
                 'data' => $data
@@ -73,17 +95,9 @@ class PensionDeductionController extends Controller
      */
     public function show(string $id)
     {
-        $data = PensionDeduction::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy',)->find($id);
+        $data = PensionDeduction::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.netPension.pensioner')->find($id);
 
         return response()->json(['data' => $data]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
     }
 
     /**
@@ -95,19 +109,34 @@ class PensionDeductionController extends Controller
         if (!$data) return response()->json(['errorMsg' => 'Pension deduction not found!'], 404);
 
         $request->validate([
-            'pension_id' => 'required|exists:monthly_pensions,id',
-            'deduction_type' => 'required|in:Income Tax,Recovery,Other',
-            'amount' => 'required|numeric',
-            'description' => 'string'
+            'net_pension_id' => 'required|exists:net_pensions,id',
+            'income_tax' => 'nullable|numeric',
+            'recovery' => 'nullable|numeric',
+            'other' => 'nullable|numeric',
+            'description' => 'nullable|string'
         ]);
+
+        $hasNetPension = PensionDeduction::where('net_pension_id')->get()->first();
+        if ($hasNetPension) return response()->json(['errorMsg' => 'This net pension is already added in deduction!. Please select another net pension.'], 400);
+
+        $netPension = NetPension::with('monthlyPension')->find($request['net_pension_id']);
+        if (!$netPension) return response()->json(['errorMsg' => 'Net Pension not found!'], 404);
+
+        $pensionInfo = PensionRelatedInfo::find($netPension->monthlyPension->pension_rel_info_id);
+        if (!$pensionInfo) return response()->json(['errorMsg' => 'Pension Related Information not found!'], 404);
+
+        $total = $pensionInfo->commutation_amount + $request['income_tax'] + $request['recovery'] + $request['other'];
 
         DB::beginTransaction();
 
         $old_data = $data->toArray();
 
-        $data->pension_id = $request['pension_id'];
-        $data->deduction_type = $request['deduction_type'];
-        $data->amount = $request['amount'];
+        $data->net_pension_id = $request['net_pension_id'];
+        $data->commutation_amount = $pensionInfo->commutation_amount;
+        $data->income_tax = $request['income_tax'];
+        $data->recovery = $request['recovery'];
+        $data->other = $request['other'];
+        $data->amount = $total;
         $data->description = $request['description'];
         $data->edited_by = auth()->id();
 
@@ -116,9 +145,13 @@ class PensionDeductionController extends Controller
 
             $data->history()->create($old_data);
 
+            $netPension->net_pension = $netPension->monthlyPension->total_pension - $total;
+
+            $netPension->save();
+
             DB::commit();
             return response()->json([
-                'successMsg' => 'Pension Deduction update successfully!',
+                'successMsg' => 'Pension Deduction updated successfully!',
                 'data' => $data
             ], 200);
         } catch (\Exception $e) {

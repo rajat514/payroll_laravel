@@ -5,25 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class PensionDeductionClone extends Model
+class PensionRelatedInfoClone extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'pension_deduction_id',
-        'net_pension_id',
+        'pension_rel_info_id',
+        'pensioner_id',
+        'basic_pension',
         'commutation_amount',
-        'income_tax',
-        'recovery',
-        'other',
-        'amount',
-        'description',
+        'effective_from',
+        'effective_till',
+        'is_active',
+        'additional_pension',
+        'medical_allowance',
+        'arrear_id',
+        'total_arrear',
+        'remarks',
         'added_by',
         'edited_by',
     ];
-
 
     public function addedBy(): BelongsTo
     {
@@ -33,11 +35,5 @@ class PensionDeductionClone extends Model
     public function editedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
-    }
-
-
-    public function netPension(): BelongsTo
-    {
-        return $this->belongsTo(NetPension::class)->select('id', 'pensioner_id', 'net_pension');
     }
 }

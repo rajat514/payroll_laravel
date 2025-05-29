@@ -7,13 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class PensionDeduction extends Model
+class PensionRelatedInfo extends Model
 {
     use HasFactory;
 
     public function history(): HasMany
     {
-        return $this->hasMany(PensionDeductionClone::class);
+        return $this->hasMany(PensionRelatedInfoClone::class, 'pension_rel_info_id');
+    }
+
+    public function arrear(): HasMany
+    {
+        return $this->hasMany(Arrears::class, 'arrear_id');
     }
 
     public function addedBy(): BelongsTo
@@ -24,20 +29,5 @@ class PensionDeduction extends Model
     public function editedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
-    }
-
-    public function monthlyPension(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\MonthlyPension::class);
-    }
-
-    public function netPension(): BelongsTo
-    {
-        return $this->belongsTo(NetPension::class)->select('id', 'pensioner_id', 'net_pension');
-    }
-
-    public function pensionerDocuments(): HasMany
-    {
-        return $this->hasMany(\App\Models\PensionerDocuments::class);
     }
 }

@@ -95,6 +95,10 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('bulk-pay-slip', [\App\Http\Controllers\Api\PaySlipController::class, 'bulkStore']);
 
     Route::apiResource('employee-deduction', \App\Http\Controllers\Api\DeductionController::class)->only('index', 'store', 'update', 'show');
+
+    Route::apiResource('pension-related-information', \App\Http\Controllers\Api\PensionRelatedInfoController::class)->only('index', 'store', 'update', 'show');
+
+    Route::apiResource('net-pension', \App\Http\Controllers\Api\NetPensionController::class)->only('index', 'update', 'show');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

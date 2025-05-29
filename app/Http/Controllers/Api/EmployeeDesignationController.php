@@ -47,6 +47,15 @@ class EmployeeDesignationController extends Controller
             ]
         );
 
+        $designation = EmployeeDesignation::where('employee_id', $request['employee_id'])->get()->last();
+
+        $isSmallDate = EmployeeDesignation::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
+        DB::beginTransaction();
+
+        $designation->effective_till = $request['effective_from'];
+
         $employeeDesignation = new EmployeeDesignation();
         $employeeDesignation->employee_id = $request['employee_id'];
         $employeeDesignation->designation = $request['designation'];
@@ -59,9 +68,11 @@ class EmployeeDesignationController extends Controller
 
         try {
             $employeeDesignation->save();
-
+            $designation->save();
+            DB::commit();
             return response()->json(['successMsg' => 'Employee Designation Added!', 'data' => $employeeDesignation]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
@@ -81,6 +92,9 @@ class EmployeeDesignationController extends Controller
                 'promotion_order_no' => 'nullable|string|max:50',
             ]
         );
+
+        $isSmallDate = EmployeeDesignation::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

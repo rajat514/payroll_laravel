@@ -11,15 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pension_deductions', function (Blueprint $table) {
+        Schema::create('net_pension_clones', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('net_pension_id')->constrained();
-            $table->float('commutation_amount', 10, 2)->nullable();
-            $table->float('income_tax', 10, 2)->nullable();
-            $table->float('recovery', 10, 2)->nullable();
-            $table->float('other', 10, 2)->nullable();
-            $table->float('amount', 10, 2);
-            $table->string('description', 255)->nullable();
+            $table->string('net_pension_id');
+            $table->string('pensioner_id');
+            $table->string('pensioner_bank_id');
+            $table->integer('month');
+            $table->integer('year');
+            $table->float('net_pension', 12, 2);
+            $table->date('processing_date');
+            $table->date('payment_date')->nullable();
+            $table->boolean('is_verified')->default(0);
+            $table->foreignId('verified_by')->nullable()->constrained('users');
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
@@ -32,6 +35,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pension_deductions');
+        Schema::dropIfExists('net_pensions');
     }
 };

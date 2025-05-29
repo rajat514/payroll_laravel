@@ -41,6 +41,9 @@ class DearnessAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        $isSmallDate = DearnesAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
         $dearnessAllowance = new DearnesAllowanceRate();
         $dearnessAllowance->rate_percentage = $request['rate_percentage'];
         $dearnessAllowance->pwd_rate_percentage = $request['pwd_rate_percentage'];
@@ -70,6 +73,9 @@ class DearnessAllowanceRateController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
+
+        $isSmallDate = DearnesAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

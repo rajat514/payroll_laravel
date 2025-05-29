@@ -14,10 +14,13 @@ return new class extends Migration
         Schema::create('pension_deduction_clones', function (Blueprint $table) {
             $table->id();
             $table->string('pension_deduction_id');
-            $table->string('pension_id');
-            $table->enum('deduction_type', ['Income Tax', 'Recovery', 'Other']);
+            $table->string('net_pension_id');
+            $table->float('commutation_amount', 10, 2)->nullable();
+            $table->float('income_tax', 10, 2)->nullable();
+            $table->float('recovery', 10, 2)->nullable();
+            $table->float('other', 10, 2)->nullable();
             $table->float('amount', 10, 2);
-            $table->string('description', 255);
+            $table->string('description', 255)->nullable();
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();

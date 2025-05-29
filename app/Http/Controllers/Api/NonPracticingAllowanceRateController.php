@@ -41,6 +41,9 @@ class NonPracticingAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        $isSmallDate = NonPracticingAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
         $nPAllowance = new NonPracticingAllowanceRate();
         $nPAllowance->applicable_post = $request['applicable_post'];
         $nPAllowance->rate_percentage = $request['rate_percentage'];
@@ -70,6 +73,9 @@ class NonPracticingAllowanceRateController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
+
+        $isSmallDate = NonPracticingAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

@@ -28,13 +28,17 @@ class ArrearClone extends model
         'edited_by'
     ];
 
-    function addby(): BelongsTo
+    public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by', 'id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name', 'role_id');
     }
 
-    function editby(): BelongsTo
+    public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
+    }
+    public function pensioner(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\PensionerInformation::class, 'pensioner_id')->select('id', 'name');
     }
 }

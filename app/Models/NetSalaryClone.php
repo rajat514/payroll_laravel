@@ -21,7 +21,8 @@ class NetSalaryClone extends Model
         'net_amount',
         'payment_date',
         'employee_bank_id',
-        'varified_by',
+        'is_verified',
+        'verified_by',
         'added_by',
         'edited_by',
     ];
@@ -54,6 +55,6 @@ class NetSalaryClone extends Model
 
     function verifiedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'varified_by', 'id')->select('id', 'name', 'role_id');
+        return $this->belongsTo(User::class, 'verified_by', 'id')->select('id', 'name', 'role_id');
     }
 }

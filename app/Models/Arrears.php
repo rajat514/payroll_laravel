@@ -21,6 +21,11 @@ class Arrears extends Model
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
 
+    public function pensioner(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\PensionerInformation::class, 'pensioner_id')->select('id', 'name');
+    }
+
     function history(): HasMany
     {
         return $this->hasMany(ArrearClone::class);

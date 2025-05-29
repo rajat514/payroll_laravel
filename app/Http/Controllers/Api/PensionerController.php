@@ -23,6 +23,11 @@ class PensionerController extends Controller
 
         $query = PensionerInformation::with('employee', 'addedBy.role', 'editedBy.role');
 
+        $query->when(
+            'retired_employee_id',
+            fn($q) => $q->where('retired_employee_id', 'LIKE', '%' . request('retired_employee_id') . '%')
+        );
+
         $total_count = $query->count();
 
         $data = $query->offset($offset)->limit($limit)->get();
@@ -242,20 +247,17 @@ class PensionerController extends Controller
 
         DB::beginTransaction();
 
-        $old_data = $pensioner->toArray;
+        $old_data = $pensioner->toArray();
 
         $pensioner->status = $request['status'];
 
         try {
             $pensioner->save();
 
-            $pensioner->history->create($old_data);
+            $pensioner->history()->create($old_data);
 
             DB::commit();
-            return response()->json([
-                'message' => 'Pensioner status change successfully!',
-                'data' => $pensioner
-            ], 200);
+            return response()->json(['message' => 'Pensioner status change successfully!', 'data' => $pensioner], 200);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([

@@ -11,20 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('monthly_pension_clones', function (Blueprint $table) {
+        Schema::create('pension_related_info_clones', function (Blueprint $table) {
             $table->id();
-            $table->string('monthly_pension_id');
             $table->string('pension_rel_info_id');
-            $table->string('net_pension_id');
+            $table->string('pensioner_id');
             $table->float('basic_pension', 10, 2);
+            $table->float('commutation_amount', 10, 2);
+            $table->date('effective_from');
+            $table->date('effective_till')->nullable();
+            $table->boolean('is_active')->default(1);
             $table->float('additional_pension', 10, 2)->nullable();
-            $table->string('dr_id'); // References DR rate applied
-            $table->float('dr_amount', 10, 2)->nullable(); // Calculated DR amount
             $table->float('medical_allowance', 10, 2)->nullable(); // Medical allowance
+            $table->foreignId('arrear_id')->nullable()->constrained('arrears');
             $table->float('total_arrear', 10, 2)->nullable();
-            $table->float('total_pension', 10, 2); // 
             $table->string('remarks', 255)->nullable();  //  Remarks (expiry or other notes)
-            $table->enum('status', ['Pending', 'Processed', 'Paid'])->default('Pending');
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();
@@ -37,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('monthly_pensions');
+        Schema::dropIfExists('pension_related_infos');
     }
 };

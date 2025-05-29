@@ -13,21 +13,22 @@ class MonthlyPension extends Model
 
     // protected $primaryKey = 'pension_id';
 
-    protected $fillable = [
-        'pensioner_id',
-        'month',
-        'basic_pension',
-        'commutation_amount',
-        'additional_pension',
-        'dr_id',
-        'dr_amount',
-        'medical_allowance',
-        'total_pension',
-        'total_recovery',
-        'net_pension',
-        'remarks',
-        'status'
-    ];
+    // protected $fillable = [
+    //     'pension_rel_info_id',
+    //     'pensioner_id',
+    //     'month',
+    //     'basic_pension',
+    //     'commutation_amount',
+    //     'additional_pension',
+    //     'dr_id',
+    //     'dr_amount',
+    //     'medical_allowance',
+    //     'total_pension',
+    //     'total_recovery',
+    //     'net_pension',
+    //     'remarks',
+    //     'status'
+    // ];
 
 
     public function addedBy(): BelongsTo
@@ -40,23 +41,22 @@ class MonthlyPension extends Model
         return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
     }
 
-    public function pensioner()
+    public function dearness()
     {
-        return $this->belongsTo(\App\Models\PensionerInformation::class);
-    }
-
-    public function dr()
-    {
-        return $this->belongsTo(\App\Models\DearnessRelief::class);
-    }
-
-    public function dedcution()
-    {
-        return $this->hasMany(\App\Models\PensionDeduction::class);
+        return $this->belongsTo(\App\Models\DearnessRelief::class, 'dr_id');
     }
 
     public function history(): HasMany
     {
         return $this->hasMany(MonthlyPensionClone::class, 'monthly_pension_id');
+    }
+
+    public function pensionRelatedInfo(): BelongsTo
+    {
+        return $this->belongsTo(PensionRelatedInfo::class, 'pension_rel_info_id');
+    }
+    public function netPension(): BelongsTo
+    {
+        return $this->belongsTo(NetPension::class);
     }
 }

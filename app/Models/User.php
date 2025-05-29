@@ -83,4 +83,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\PensionerDocuments::class);
     }
+
+    function isAdmin()
+    {
+        return $this->role_id === 1;
+    }
 }

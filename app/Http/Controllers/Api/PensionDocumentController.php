@@ -53,7 +53,7 @@ class PensionDocumentController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/pension'), $fileName);
+            $file->move('uploads/pension', $fileName);
         }
 
         $data = new PensionerDocuments();
@@ -112,8 +112,8 @@ class PensionDocumentController extends Controller
         ]);
 
         // Delete previous file if exists
-        if ($data->file_path && file_exists(public_path($data->file_path))) {
-            unlink(public_path($data->file_path));
+        if ($data->file_path && file_exists($data->file_path)) {
+            unlink($data->file_path);
         }
 
         $fileName = '';

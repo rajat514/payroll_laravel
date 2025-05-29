@@ -41,6 +41,9 @@ class UniformAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
+        $isSmallDate = UniformAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+
         $uniformAllowance = new UniformAllowanceRate();
         $uniformAllowance->applicable_post = $request['applicable_post'];
         $uniformAllowance->amount = $request['amount'];
@@ -70,6 +73,9 @@ class UniformAllowanceRateController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
+
+        $isSmallDate = UniformAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 
