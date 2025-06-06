@@ -22,7 +22,6 @@ return new class extends Migration
             $table->date('date_of_retirement')->nullable();
             $table->boolean('pwd_status')->default(1);
             $table->enum('pension_scheme', ["GPF", "NPS"]);
-            $table->enum('institute', ["NIOH", "ROHC"]);
             $table->string('pension_number')->nullable();
             $table->boolean('gis_eligibility')->default(0);
             $table->string('gis_no')->nullable();
@@ -33,6 +32,11 @@ return new class extends Migration
             $table->boolean('uniform_allowance_eligibility')->default(0);
             $table->boolean('hra_eligibility')->default(0);
             $table->boolean('npa_eligibility')->default(0);
+            $table->string('user_id');
+            $table->string('middle_name');
+            $table->string('employee_code');
+            $table->enum('prefix', ['Mr.', 'Mrs.', 'Ms.', 'Dr.']);
+            $table->enum('institute', ['NIOH', 'ROHC', 'BOTH']);
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();

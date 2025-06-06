@@ -15,38 +15,46 @@ class PensionerInformationClone extends Model
     protected $fillable = [
         'pensioner_information_id',
         'ppo_no',
-        'name',
+        'first_name',
         'type_of_pension',
         'retired_employee_id',
-        'pensionerretired_employee_idinformation_id',
         'relation',
         'dob',
         'doj',
         'dor',
+        'start_date',
         'end_date',
         'status',
         'pan_number',
         'pay_level',
         'pay_commission',
-        'equivalent_level',
         'address',
         'city',
         'state',
         'pin_code',
         'mobile_no',
         'email',
+        'middle_name',
+        'last_name',
+        'pay_cell',
+        'pay_commission_at_retirement',
+        'basic_pay_at_retirement',
+        'last_drawn_salary',
+        'NPA',
+        'HRA',
+        'special_pay',
         'added_by',
         'edited_by',
     ];
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
     }
 
     public function employee(): BelongsTo

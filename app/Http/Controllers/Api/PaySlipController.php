@@ -63,8 +63,8 @@ class PaySlipController extends Controller
 
         $request->validate([
             'employee_id' => 'required|numeric|exists:employees,id',
-            'month' => 'required|numeric|max:12',
-            'year' => 'required|numeric',
+            'month' => 'required|numeric|max:12|min:1',
+            'year' => 'required|numeric|digits:4|min:1900',
             'processing_date' => 'required|date',
             'payment_date' => 'nullable|date',
             'employee_bank_id' => 'required|numeric|exists:employee_bank_accounts,id',
@@ -450,8 +450,8 @@ class PaySlipController extends Controller
         $netAmount = 0;
 
         $request->validate([
-            'month' => 'required|numeric|max:12',
-            'year' => 'required|numeric',
+            'month' => 'required|numeric|max:12|min:1',
+            'year' => 'required|numeric|digits:4|min:1900',
             'processing_date' => 'required|date',
             'payment_date' => 'nullable|date',
         ]);

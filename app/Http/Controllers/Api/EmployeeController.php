@@ -22,7 +22,7 @@ class EmployeeController extends Controller
         // return response()->json(['data 1' => $user->institute]);
         // }
 
-        $query = Employee::with('addedBy:id,name,role_id', 'editedBy:id,name,role_id', 'employeeStatus');
+        $query = Employee::with('addedBy:id,name,role_id', 'editedBy:id,name,role_id', 'employeeStatus', 'user');
 
         $query->when(
             request('search'),
@@ -93,8 +93,12 @@ class EmployeeController extends Controller
         $request->validate(
             [
                 'first_name' => 'required|string|min:2|max:191',
+                'middle_name' => 'required|string|min:2|max:191',
                 'last_name' => 'required|string|min:2|max:191',
+                'user_id' => 'required|numeric|exists:users,id',
+                'employee_code' => 'required|string|min:4|max:20|unique:employees,employee_code',
                 'gender' => 'required|in:male,female,other',
+                'institute' => 'required|in:NIOH,ROHC,BOTH',
                 'date_of_birth' => 'required|date',
                 'date_of_joining' => 'required|date|after:date_of_birth',
                 'date_of_retirement' => 'nullable|date',
@@ -130,8 +134,12 @@ class EmployeeController extends Controller
 
         $employee = new Employee();
         $employee->first_name = $request['first_name'];
+        $employee->middle_name = $request['middle_name'];
         $employee->last_name = $request['last_name'];
+        $employee->user_id = $request['user_id'];
+        $employee->employee_code = $request['employee_code'];
         $employee->gender = $request['gender'];
+        $employee->institute = $request['institute'];
         $employee->date_of_birth = $request['date_of_birth'];
         $employee->date_of_joining = $request['date_of_joining'];
         $employee->date_of_retirement = $request['date_of_retirement'];
@@ -180,9 +188,12 @@ class EmployeeController extends Controller
         $request->validate(
             [
                 'first_name' => 'required|string|min:2|max:191',
+                'middle_name' => 'required|string|min:2|max:191',
                 'last_name' => 'required|string|min:2|max:191',
+                'user_id' => 'required|numeric|exists:users,id',
+                'employee_code' => "required|string|min:4|max:20|unique:employees,employee_code,$id,id",
                 'gender' => 'required|in:male,female,other',
-                'institute' => 'required|in:NIOH,ROHC',
+                'institute' => 'required|in:NIOH,ROHC,BOTH',
                 'date_of_birth' => 'required|date',
                 'date_of_joining' => 'required|date|after:date_of_birth',
                 'date_of_retirement' => 'nullable|date|after:date_of_joining|after:date_of_birth',
@@ -219,7 +230,10 @@ class EmployeeController extends Controller
         // unset($old_data['id']);
 
         $employee->first_name = $request['first_name'];
+        $employee->middle_name = $request['middle_name'];
         $employee->last_name = $request['last_name'];
+        $employee->user_id = $request['user_id'];
+        $employee->employee_code = $request['employee_code'];
         $employee->gender = $request['gender'];
         $employee->institute = $request['institute'];
         $employee->date_of_birth = $request['date_of_birth'];
@@ -270,6 +284,7 @@ class EmployeeController extends Controller
     function show($id)
     {
         $data = Employee::with(
+            'user',
             'employeeStatus:id,employee_id,status,effective_from,effective_till',
             'employeeBank',
             'employeeDesignation',
@@ -279,7 +294,7 @@ class EmployeeController extends Controller
             'addedBy:id,name,role_id',
             'editedBy:id,name,role_id',
             'history.addedBy',
-            'history.editedBy'
+            'history.editedBy',
         )->find($id);
         if (!$data) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 

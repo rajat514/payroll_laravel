@@ -84,7 +84,7 @@ class NetSalaryController extends Controller
         $request->validate([
             'employee_id' => 'required|numeric|exists:employees,id',
             'month' => 'required|numeric|max:12|min:1',
-            'year' => 'required|numeric|digits:4',
+            'year' => 'required|numeric|digits:4|min:1900',
             'processing_date' => 'required|date',
             'payment_date' => 'nullable|date|after:processing_date',
             'employee_bank_id' => 'required|numeric|exists:employee_bank_accounts,id',
@@ -124,6 +124,7 @@ class NetSalaryController extends Controller
     function show($id)
     {
         $netSalary = NetSalary::with(
+            'employee.employeeDesignation',
             'deduction',
             'paySlip',
             'verifiedBy',
@@ -135,5 +136,29 @@ class NetSalaryController extends Controller
         )->find($id);
 
         return response()->json(['data' => $netSalary]);
+    }
+
+    function verifySalary(Request $request)
+    {
+        $data = $request['selected_id'];
+        if (!is_array($data)) {
+            $data = [$data];
+        }
+
+        foreach ($data as $index) {
+            $netSalary = NetSalary::find($index);
+            if (!$netSalary) return response()->json(['errorMsg' => 'Net Salary not found!'], 404);
+
+            $netSalary->is_verified = 1;
+            $netSalary->verified_by = auth()->id();
+
+            try {
+                $netSalary->save();
+            } catch (\Exception $e) {
+                return response()->json(['errorMsg' => $e->getMessage()], 500);
+            }
+        }
+
+        return response()->json(['data' => 'Salary varified successfully!']);
     }
 }

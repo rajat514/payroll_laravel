@@ -17,10 +17,15 @@ class NetPensionController extends Controller
 
         $query = NetPension::with('pensionerDeduction', 'monthlyPension');
 
-        // $query->when(
-        //     request('employee_id'),
-        //     fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%')
-        // );
+        $query->when(
+            request('month'),
+            fn($q) => $q->where('month', 'LIKE', '%' . request('month') . '%')
+        );
+
+        $query->when(
+            request('year'),
+            fn($q) => $q->where('year', 'LIKE', '%' . request('year') . '%')
+        );
 
         $total_count = $query->count();
 
@@ -38,7 +43,7 @@ class NetPensionController extends Controller
             'pensioner_id' => 'required|exists:pensioner_information,id',
             'pensioner_bank_id' => 'required|exists:bank_accounts,id',
             'month' => 'required|numeric|max:12|min:1',
-            'year' => 'required|numeric|digits:4',
+            'year' => 'required|numeric|digits:4|min:1900',
             'processing_date' => 'required|date',
             'payment_date' => 'nullable|date|after:processing_date',
         ]);

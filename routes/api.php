@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+
 Route::post('login', [\App\Http\Controllers\Api\UserController::class, 'login']);
 
 Route::group(['middleware' => 'auth:sanctum'], function () {
@@ -42,6 +43,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('employee-status', \App\Http\Controllers\Api\EmployeeStatusController::class)->except(['destroy']);
 
     Route::apiResource('employee-bank', \App\Http\Controllers\Api\EmployeeBankController::class)->except('destroy');
+
+    Route::apiResource('designation', \App\Http\Controllers\Api\DesignationController::class)->only('index', 'store', 'update', 'show');
 
     Route::get('/employee-bank-status/{id}', [\App\Http\Controllers\Api\EmployeeBankController::class, 'changeStatus']);
 
@@ -77,6 +80,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('employee-loan', \App\Http\Controllers\Api\LoanAdvanceController::class)->except(['destroy,show']);
 
     Route::apiResource('salary', \App\Http\Controllers\Api\NetSalaryController::class)->except(['destroy']);
+    Route::post('verify-salary', [\App\Http\Controllers\Api\NetSalaryController::class, 'verifySalary']);
 
     Route::apiResource('monthly-pension', \App\Http\Controllers\Api\MonthlyPensionController::class)->only('index', 'store', 'update', 'show');
 
@@ -99,6 +103,11 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('pension-related-information', \App\Http\Controllers\Api\PensionRelatedInfoController::class)->only('index', 'store', 'update', 'show');
 
     Route::apiResource('net-pension', \App\Http\Controllers\Api\NetPensionController::class)->only('index', 'update', 'show');
+    Route::post('bulk-pensions', [\App\Http\Controllers\Api\MonthlyPensionController::class, 'bulkPension']);
+
+    Route::get('report', [\App\Http\Controllers\Api\ReportController::class, 'index']);
+
+    Route::apiResource('pay-commission', \App\Http\Controllers\Api\PayCommissionController::class)->only('index', 'update', 'store', 'show');
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

@@ -20,12 +20,12 @@ class BankAccountController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = BankAccount::with('pensioner', 'addedBy.role', 'editedBy.role');
+        $query = BankAccount::with('pensioner');
 
-        $query->when(
-            'pensioner_id',
-            fn($q) => $q->where('pensioner_id', 'LIKE', '%' . request('pensioner_id') . '%')
-        );
+        // $query->when(
+        //     'pensioner_id',
+        //     fn($q) => $q->where('pensioner_id', 'LIKE', '%' . request('pensioner_id') . '%')
+        // );
 
         $total_count = $query->count();
 
@@ -52,7 +52,7 @@ class BankAccountController extends Controller
             'bank_name' => 'required|string|max:100',
             'branch_name' => 'required|string|max:100',
             'account_no' => 'required|string|unique:bank_accounts,account_no',
-            'ifsc_code' => 'required|string|max:20',
+            'ifsc_code' => 'required|string|max:20|regex:/^[A-Z]{4}0[A-Z0-9]{6}$/',
         ], [
             'pensioner_id.required' => 'Please select a pensioner.',
             'pensioner_id.exists' => 'Selected pensioner does not exist.',
@@ -159,7 +159,7 @@ class BankAccountController extends Controller
             'bank_name' => 'required|string|max:100',
             'branch_name' => 'required|string|max:100',
             'account_no' => 'required|string',
-            'ifsc_code' => 'required|string|max:20',
+            'ifsc_code' => 'required|string|max:20|regex:/^[A-Z]{4}0[A-Z0-9]{6}$/',
         ], [
             'pensioner_id.required' => 'Please select a pensioner.',
             'pensioner_id.exists' => 'Selected pensioner does not exist.',

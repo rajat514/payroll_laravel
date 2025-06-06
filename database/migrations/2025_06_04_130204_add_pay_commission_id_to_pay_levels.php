@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('pay_matrix_levels', function (Blueprint $table) {
+            $table->foreignId('pay_commission_id')->nullable()->constrained('pay_commissions');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('pay_matrix_levels', function (Blueprint $table) {
+            //
+        });
+    }
+};

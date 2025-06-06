@@ -33,7 +33,7 @@ class UserController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = User::query();
+        $query = User::with('role');
 
         $total_count = $query->count();
 
@@ -71,23 +71,29 @@ class UserController extends Controller
 
     function store(Request $request)
     {
-        $userRole = User::with('role')->find(auth()->id());
-        if ($userRole->role_id != 1) return response()->json(['errorMsg' => 'You are not allowed to do this!'], 401);
+        // $userRole = User::with('role')->find(auth()->id());
+        // if ($userRole->role_id != 1) return response()->json(['errorMsg' => 'You are not allowed to do this!'], 401);
 
         if ($request['role_id'] == 1) return response()->json(['errorMsg' => 'Admin already exists!'], 409);
 
         $request->validate([
             'role_id' => 'required|numeric|exists:roles,id',
-            'name' => 'required|string|min:3|max:191',
+            'first_name' => 'required|string|min:3|max:191',
+            'middle_name' => 'nullable|string|min:3|max:191',
+            'last_name' => 'required|string|min:3|max:191',
+            'employee_code' => 'required|string|min:3|max:191',
             'password' => 'required|string|min:5|max:30',
             'email' => 'required|email|unique:users,email',
-            'institute' => 'required|in:NIOH,ROHC'
+            'institute' => 'required|in:NIOH,ROHC,BOTH'
         ]);
 
 
         $user = new User();
         $user->role_id = $request['role_id'];
-        $user->name = $request['name'];
+        $user->first_name = $request['first_name'];
+        $user->middle_name = $request['middle_name'];
+        $user->last_name = $request['last_name'];
+        $user->employee_code = $request['employee_code'];
         $user->email = $request['email'];
         $user->institute = $request['institute'];
         $user->password = Hash::make($request['password']);
@@ -113,13 +119,19 @@ class UserController extends Controller
 
         $request->validate([
             'role_id' => 'required|numeric|exists:roles,id',
-            'name' => 'required|string|min:3|max:191',
+            'first_name' => 'required|string|min:3|max:191',
+            'middle_name' => 'nullable|string|min:3|max:191',
+            'last_name' => 'required|string|min:3|max:191',
+            'employee_code' => 'required|string|min:3|max:191',
             'email' => "required|email|unique:users,email,$id,id",
-            'institute' => 'required|in:NIOH,ROHC'
+            'institute' => 'required|in:NIOH,ROHC,BOTH'
         ]);
 
         $user->role_id = $request['role_id'];
-        $user->name = $request['name'];
+        $user->first_name = $request['first_name'];
+        $user->middle_name = $request['middle_name'];
+        $user->last_name = $request['last_name'];
+        $user->employee_code = $request['employee_code'];
         $user->email = $request['email'];
         $user->institute = $request['institute'];
 

@@ -22,14 +22,19 @@ class PayMatrixLevel extends Model
         return $this->hasMany(PayMatrixLevelClone::class);
     }
 
+    public function payCommission(): BelongsTo
+    {
+        return $this->belongsTo(PayCommission::class)->select('id', 'name', 'year');
+    }
+
     function addedBy(): BelongsTo
 
     {
-        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
     }
 
     function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
     }
 }

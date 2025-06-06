@@ -23,12 +23,12 @@ class EmployeeQuarter extends Model
 
     function addedby(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
     }
 
     function editedby(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
     }
 
     function history(): HasMany

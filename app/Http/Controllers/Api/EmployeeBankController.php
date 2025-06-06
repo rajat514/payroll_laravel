@@ -67,7 +67,7 @@ class EmployeeBankController extends Controller
                 'account_number' => 'required|string|max:30',
                 'ifsc_code' => [
                     'required',
-                    'regex:"^[^\s]{4}\d{7}$"'
+                    'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'
                 ],
                 'effective_from' => 'required|date',
                 'is_active' => 'boolean|in:1,0',
@@ -104,7 +104,7 @@ class EmployeeBankController extends Controller
                 'account_number' => 'required|string|max:30',
                 'ifsc_code' => [
                     'required',
-                    'regex:"^[^\s]{4}\d{7}$"'
+                    'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'
                 ],
                 'effective_from' => 'required|date',
                 'is_active' => 'required|boolean|in:1,0',

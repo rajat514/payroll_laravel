@@ -54,7 +54,16 @@ class EmployeeDesignationController extends Controller
 
         DB::beginTransaction();
 
-        $designation->effective_till = $request['effective_from'];
+        if ($designation) {
+            $designation->effective_till = $request['effective_from'];
+            try {
+                DB::commit();
+                $designation->save();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json(['errorMsg' => $e->getMessage()], 500);
+            }
+        }
 
         $employeeDesignation = new EmployeeDesignation();
         $employeeDesignation->employee_id = $request['employee_id'];
@@ -68,7 +77,6 @@ class EmployeeDesignationController extends Controller
 
         try {
             $employeeDesignation->save();
-            $designation->save();
             DB::commit();
             return response()->json(['successMsg' => 'Employee Designation Added!', 'data' => $employeeDesignation]);
         } catch (\Exception $e) {

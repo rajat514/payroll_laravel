@@ -50,25 +50,35 @@ class PensionerController extends Controller
     {
         $request->validate([
             'ppo_no' => 'required|string|max:20',
-            'name' => 'required|string|max:100',
+            'first_name' => 'required|string|max:100',
             'type_of_pension' => 'required|in:Regular,Family',
             'retired_employee_id' => 'required',
             'relation' => 'required|in:Self,Spouse,Son,Daughter,Other',
             'dob' => 'required|date',
             'doj' => 'required|date',
             'dor' => 'required|date',
+            'start_date' => 'required|date',
             'end_date' => 'nullable|date',
-            'status' => 'required|in:Active,Expired,Suspended',
+            'status' => 'required|in:Active,Deseased',
             'pan_number' => 'required|string|max:10',
             'pay_level' => 'required|string|max:50',
             'pay_commission' => 'required|string|max:50',
-            'equivalent_level' => 'required|string|max:50',
+            // 'equivalent_level' => 'required|string|max:50',
             'address' => 'required|string',
             'city' => 'required|string|max:50',
             'state' => 'required|string|max:50',
             'pin_code' => 'required|string|max:10',
             'mobile_no' => 'required|string|max:15',
             'email' => 'required|email',
+            'middle_name' => 'nullable|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'pay_cell' => 'required|string|max:50',
+            'pay_commission_at_retirement' => 'required|string|max:100',
+            'basic_pay_at_retirement' => 'required|integer',
+            'last_drawn_salary' => 'required|integer',
+            'NPA' => 'nullable|integer',
+            'HRA' => 'nullable|integer',
+            'special_pay' => 'nullable|integer',
         ]);
 
 
@@ -85,25 +95,35 @@ class PensionerController extends Controller
 
         $pensioner = new PensionerInformation();
         $pensioner->ppo_no = $request['ppo_no'];
-        $pensioner->name = $request['name'];
+        $pensioner->first_name = $request['first_name'];
         $pensioner->type_of_pension = $request['type_of_pension'];
         $pensioner->retired_employee_id = $request['retired_employee_id'];
         $pensioner->relation = $request['relation'];
         $pensioner->dob = $request['dob'];
         $pensioner->doj = $request['doj'];
         $pensioner->dor = $request['dor'];
+        $pensioner->start_date = $request['start_date'];
         $pensioner->end_date = $request['end_date'];
         $pensioner->status = $request['status'];
         $pensioner->pan_number = $request['pan_number'];
         $pensioner->pay_level = $request['pay_level'];
         $pensioner->pay_commission = $request['pay_commission'];
-        $pensioner->equivalent_level = $request['equivalent_level'];
+        // $pensioner->equivalent_level = $request['equivalent_level'];
         $pensioner->address = $request['address'];
         $pensioner->city = $request['city'];
         $pensioner->state = $request['state'];
         $pensioner->pin_code = $request['pin_code'];
         $pensioner->mobile_no = $request['mobile_no'];
         $pensioner->email = $request['email'];
+        $pensioner->last_name = $request['last_name'];
+        $pensioner->middle_name = $request['middle_name'];
+        $pensioner->pay_cell = $request['pay_cell'];
+        $pensioner->pay_commission_at_retirement = $request['pay_commission_at_retirement'];
+        $pensioner->basic_pay_at_retirement = $request['basic_pay_at_retirement'];
+        $pensioner->last_drawn_salary = $request['last_drawn_salary'];
+        $pensioner->NPA = $request['NPA'];
+        $pensioner->HRA = $request['HRA'];
+        $pensioner->special_pay = $request['special_pay'];
         $pensioner->added_by = auth()->id();
 
         try {
@@ -150,26 +170,36 @@ class PensionerController extends Controller
         if (!$pensioner) return response()->json(['message' => 'Pensioner data not found!'], 404);
 
         $request->validate([
-            'ppo_no' => 'required|string|max:20',
-            'name' => 'required|string|max:100',
+            'ppo_no' => "required|string|max:20|unique:pensioner_information,id,$id,id",
+            'first_name' => 'required|string|max:100',
             'type_of_pension' => 'required|in:Regular,Family',
             'retired_employee_id' => 'required',
             'relation' => 'required|in:Self,Spouse,Son,Daughter,Other',
             'dob' => 'required|date',
             'doj' => 'required|date|after:dob',
             'dor' => 'required|date|after:dob|after:doj',
+            'start_date' => 'required|date',
             'end_date' => 'nullable|date',
-            'status' => 'required|in:Active,Expired,Suspended',
+            'status' => 'required|in:Active,Deseased',
             'pan_number' => 'required|string|max:10',
             'pay_level' => 'required|string|max:50',
             'pay_commission' => 'required|string|max:50',
-            'equivalent_level' => 'required|string|max:50',
+            // 'equivalent_level' => 'required|string|max:50',
             'address' => 'required|string',
             'city' => 'required|string|max:50',
             'state' => 'required|string|max:50',
             'pin_code' => 'required|string|max:10',
             'mobile_no' => 'required|string|max:15',
             'email' => 'required|email',
+            'middle_name' => 'nullable|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'pay_cell' => 'required|string|max:50',
+            'pay_commission_at_retirement' => 'required|string|max:100',
+            'basic_pay_at_retirement' => 'required|integer',
+            'last_drawn_salary' => 'required|integer',
+            'NPA' => 'nullable|integer',
+            'HRA' => 'nullable|integer',
+            'special_pay' => 'nullable|integer',
         ]);
 
         $employeeStatus = EmployeeStatus::where('employee_id', $request['retired_employee_id'])
@@ -188,25 +218,35 @@ class PensionerController extends Controller
         $old_data  = $pensioner->toArray();
 
         $pensioner->ppo_no = $request['ppo_no'];
-        $pensioner->name = $request['name'];
+        $pensioner->first_name = $request['first_name'];
         $pensioner->type_of_pension = $request['type_of_pension'];
         $pensioner->retired_employee_id = $request['retired_employee_id'];
         $pensioner->relation = $request['relation'];
         $pensioner->dob = $request['dob'];
         $pensioner->doj = $request['doj'];
         $pensioner->dor = $request['dor'];
+        $pensioner->start_date = $request['start_date'];
         $pensioner->end_date = $request['end_date'];
         $pensioner->status = $request['status'];
         $pensioner->pan_number = $request['pan_number'];
         $pensioner->pay_level = $request['pay_level'];
         $pensioner->pay_commission = $request['pay_commission'];
-        $pensioner->equivalent_level = $request['equivalent_level'];
+        // $pensioner->equivalent_level = $request['equivalent_level'];
         $pensioner->address = $request['address'];
         $pensioner->city = $request['city'];
         $pensioner->state = $request['state'];
         $pensioner->pin_code = $request['pin_code'];
         $pensioner->mobile_no = $request['mobile_no'];
         $pensioner->email = $request['email'];
+        $pensioner->last_name = $request['last_name'];
+        $pensioner->middle_name = $request['middle_name'];
+        $pensioner->pay_cell = $request['pay_cell'];
+        $pensioner->pay_commission_at_retirement = $request['pay_commission_at_retirement'];
+        $pensioner->basic_pay_at_retirement = $request['basic_pay_at_retirement'];
+        $pensioner->last_drawn_salary = $request['last_drawn_salary'];
+        $pensioner->NPA = $request['NPA'];
+        $pensioner->HRA = $request['HRA'];
+        $pensioner->special_pay = $request['special_pay'];
         $pensioner->edited_by = auth()->id();
 
         try {

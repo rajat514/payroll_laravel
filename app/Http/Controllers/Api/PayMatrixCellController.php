@@ -11,11 +11,11 @@ class PayMatrixCellController extends Controller
 {
     function index()
     {
-        $page = request('page') ? (int)request('page') : 1;
-        $limit = request('limit') ? (int)request('limit') : 30;
-        $offset = ($page - 1) * $limit;
+        // $page = request('page') ? (int)request('page') : 1;
+        // $limit = request('limit') ? (int)request('limit') : 30;
+        // $offset = ($page - 1) * $limit;
 
-        $query = PayMatrixCell::with('payMatrixLevel');
+        $query = PayMatrixCell::with('payMatrixLevel.PayCommission');
 
         $query->when(
             request('matrix_level_id'),
@@ -23,7 +23,7 @@ class PayMatrixCellController extends Controller
         );
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }

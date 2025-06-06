@@ -11,15 +11,15 @@ class PayMatrixLevelController extends Controller
 {
     function index()
     {
-        $page = request('page') ? (int)request('page') : 1;
-        $limit = request('limit') ? (int)request('limit') : 30;
-        $offset = ($page - 1) * $limit;
+        // $page = request('page') ? (int)request('page') : 1;
+        // $limit = request('limit') ? (int)request('limit') : 30;
+        // $offset = ($page - 1) * $limit;
 
-        $query = PayMatrixLevel::with('payMatrixCell');
+        $query = PayMatrixLevel::with('payMatrixCell', 'payCommission');
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -35,6 +35,7 @@ class PayMatrixLevelController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'regex:/^(?:\d{1,2}[A-Z]|\d+)$/', 'unique:pay_matrix_levels'],
+            'pay_commission_id' => 'required|numeric|exists:pay_commissions,id',
             'description' => 'nullable|string|max:191',
 
         ]);
@@ -42,6 +43,7 @@ class PayMatrixLevelController extends Controller
         $payMatrixLevel = new PayMatrixLevel();
         $payMatrixLevel->name = $request['name'];
         $payMatrixLevel->description = $request['description'];
+        $payMatrixLevel->pay_commission_id = $request['pay_commission_id'];
         $payMatrixLevel->added_by = auth()->id();
 
         try {
@@ -60,7 +62,8 @@ class PayMatrixLevelController extends Controller
 
         $request->validate([
             'name' => ['required', 'string', 'regex:/^(?:\d{1,2}[A-Z]|\d+)$/', "unique:pay_matrix_levels,name,$id,id"],
-            'description' => 'nullable|string|max:191'
+            'description' => 'nullable|string|max:191',
+            'pay_commission_id' => 'required|numeric|exists:pay_commissions,id',
         ]);
 
         DB::beginTransaction();
@@ -69,6 +72,7 @@ class PayMatrixLevelController extends Controller
 
         $payMatrixLevel->name = $request['name'];
         $payMatrixLevel->description = $request['description'];
+        $payMatrixLevel->pay_commission_id = $request['pay_commission_id'];
         $payMatrixLevel->edited_by = auth()->id();
 
         try {
