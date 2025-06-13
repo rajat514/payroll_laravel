@@ -111,7 +111,7 @@ class LoanAdvanceController extends Controller
 
     function show($id)
     {
-        $data = LoanAdvance::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = LoanAdvance::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.employee')->find($id);
 
         return response()->json(['data' => $data]);
     }

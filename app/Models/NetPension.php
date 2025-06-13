@@ -41,4 +41,9 @@ class NetPension extends Model
     {
         return $this->belongsTo(PensionerInformation::class);
     }
+
+    public function pensionerBank(): BelongsTo
+    {
+        return $this->belongsTo(BankAccount::class);
+    }
 }

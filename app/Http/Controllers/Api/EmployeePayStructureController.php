@@ -48,19 +48,19 @@ class EmployeePayStructureController extends Controller
         $request->validate([
             'employee_id' => 'required|numeric|exists:employees,id',
             'matrix_cell_id' => 'required|numeric|exists:pay_matrix_cells,id',
-            'commission' => 'required|numeric',
+            // 'commission' => 'required|numeric',
             'effective_from' => 'required|date',
             'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
 
-        $isSmallDate = EmployeePayStructure::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        $isSmallDate = EmployeePayStructure::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         $payStructure = new EmployeePayStructure();
         $payStructure->employee_id = $request['employee_id'];
         $payStructure->matrix_cell_id = $request['matrix_cell_id'];
-        $payStructure->commission = $request['commission'];
+        $payStructure->commission = 0;
         $payStructure->effective_from = $request['effective_from'];
         $payStructure->effective_till = $request['effective_till'];
         $payStructure->order_reference = $request['order_reference'];
@@ -82,13 +82,13 @@ class EmployeePayStructureController extends Controller
         $request->validate([
             'employee_id' => 'required|numeric|exists:employees,id',
             'matrix_cell_id' => 'required|numeric|exists:pay_matrix_cells,id',
-            'commission' => 'required|numeric',
+            // 'commission' => 'required|numeric',
             'effective_from' => 'required|date',
             'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
 
-        $isSmallDate = EmployeePayStructure::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        $isSmallDate = EmployeePayStructure::where('effective_from', '>', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
@@ -97,7 +97,7 @@ class EmployeePayStructureController extends Controller
 
         $payStructure->employee_id = $request['employee_id'];
         $payStructure->matrix_cell_id = $request['matrix_cell_id'];
-        $payStructure->commission = $request['commission'];
+        $payStructure->commission = 0;
         $payStructure->effective_from = $request['effective_from'];
         $payStructure->effective_till = $request['effective_till'];
         $payStructure->order_reference = $request['order_reference'];

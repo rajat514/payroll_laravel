@@ -17,6 +17,24 @@ class PayMatrixLevelController extends Controller
 
         $query = PayMatrixLevel::with('payMatrixCell', 'payCommission');
 
+        // $query->when(
+        //     request('pay_commission_id'),
+        //     fn($q) => $q->where('pay_commission_id', 'LIKE', '%' . request('pay_commission_id') . '%')
+        // );
+
+        $total_count = $query->count();
+
+        $data = $query->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+    function levelByCommission($id)
+    {
+        $query = PayMatrixLevel::with('payMatrixCell', 'payCommission');
+
+        $query->where('pay_commission_id', $id);
+
         $total_count = $query->count();
 
         $data = $query->get();

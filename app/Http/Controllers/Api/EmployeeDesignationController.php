@@ -101,7 +101,7 @@ class EmployeeDesignationController extends Controller
             ]
         );
 
-        $isSmallDate = EmployeeDesignation::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
+        $isSmallDate = EmployeeDesignation::where('employee_id', $request['employee_id'])->where('effective_from', '>', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();

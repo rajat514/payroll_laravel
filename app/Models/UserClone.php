@@ -23,8 +23,16 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'user_id',
+        'role_id',
+        'middle_name',
+        'first_name',
+        'last_name',
+        'employee_code',
         'email',
+        'email_verified_at',
+        'institute',
+        'is_active',
         'password',
     ];
 
@@ -107,11 +115,6 @@ class User extends Authenticatable
     function isAdmin()
     {
         return $this->role_id === 1;
-    }
-
-    function history(): HasMany
-    {
-        return $this->hasMany(UniformAllowanceRateClone::class, 'uniform_allowance_id');
     }
 
     public function addedBy(): BelongsTo

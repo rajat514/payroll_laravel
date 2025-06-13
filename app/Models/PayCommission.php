@@ -11,7 +11,7 @@ class PayCommission extends Model
 {
     use HasFactory;
 
-    public function PayMatrixLevel(): HasMany
+    public function payMatrixLevel(): HasMany
     {
         return $this->hasMany(PayMatrixLevel::class);
     }

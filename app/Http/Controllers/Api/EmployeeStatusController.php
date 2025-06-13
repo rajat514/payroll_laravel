@@ -69,7 +69,7 @@ class EmployeeStatusController extends Controller
             'order_reference' => 'nullable|string|max:255',
         ]);
 
-        $isSmallDate = EmployeeStatus::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
+        $isSmallDate = EmployeeStatus::where('employee_id', $request['employee_id'])->where('effective_from', '>', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();

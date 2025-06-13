@@ -282,7 +282,7 @@ class PensionerController extends Controller
         if (!$pensioner) return response()->json(['message' => 'Pensioner data not found!'], 404);
 
         $request->validate([
-            'status' => 'required|in:Active,Expired,Suspended'
+            'status' => 'required|in:Active,Deceased'
         ]);
 
         DB::beginTransaction();

@@ -74,7 +74,7 @@ class DearnessAllowanceRateController extends Controller
             'notification_ref' => 'nullable|string'
         ]);
 
-        $isSmallDate = DearnesAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        $isSmallDate = DearnesAllowanceRate::where('effective_from', '>', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();

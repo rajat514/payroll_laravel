@@ -22,11 +22,12 @@ class EmployeeController extends Controller
         // return response()->json(['data 1' => $user->institute]);
         // }
 
-        $query = Employee::with('addedBy:id,name,role_id', 'editedBy:id,name,role_id', 'employeeStatus', 'user');
+        $query = Employee::with('employeeStatus', 'user');
 
         $query->when(
             request('search'),
             fn($q) => $q->where('first_name', 'LIKE', '%' . request('search') . '%')
+                ->orwhere('middle_name', 'LIKE', '%' . request('search') . '%')
                 ->orwhere('last_name', 'LIKE', '%' . request('search') . '%')
         );
 
@@ -291,8 +292,8 @@ class EmployeeController extends Controller
             'netSalary',
             'employeePayStructure',
             'employeeQuarter',
-            'addedBy:id,name,role_id',
-            'editedBy:id,name,role_id',
+            'addedBy',
+            'editedBy',
             'history.addedBy',
             'history.editedBy',
         )->find($id);

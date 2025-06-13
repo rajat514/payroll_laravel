@@ -18,7 +18,7 @@ class ArrearsController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = Arrears::with('addedBy.role', 'editedBy.role');
+        $query = Arrears::with('addedBy.role', 'editedBy.role', 'pensioner.employee');
 
         $query->when(
             'pensioner_id',

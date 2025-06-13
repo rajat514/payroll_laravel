@@ -11,7 +11,7 @@ class PayCommissionController extends Controller
 {
     function index()
     {
-        $data = PayCommission::all();
+        $data = PayCommission::with('payMatrixLevel.payMatrixCell')->get();
 
         return response()->json(['data' => $data]);
     }
@@ -27,12 +27,14 @@ class PayCommissionController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:191',
-            'year' => 'required|numeric|digits:4'
+            'year' => 'required|numeric|digits:4',
+            'is_active' => 'boolean|in:1,0'
         ]);
 
         $payCommission = new PayCommission();
         $payCommission->name = $request['name'];
         $payCommission->year = $request['year'];
+        $payCommission->is_active = $request['is_active'];
         $payCommission->added_by = auth()->id();
 
         try {

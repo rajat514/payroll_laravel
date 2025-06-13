@@ -42,6 +42,18 @@ class UserController extends Controller
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
+    function allUsers()
+    {
+
+        $query = User::with('role');
+
+        $query->withCount('employee');
+
+        $data = $query->get();
+
+        return response()->json(['data' => $data,]);
+    }
+
     function user()
     {
         $user = User::with('role')->find(auth()->id());
@@ -81,7 +93,7 @@ class UserController extends Controller
             'first_name' => 'required|string|min:3|max:191',
             'middle_name' => 'nullable|string|min:3|max:191',
             'last_name' => 'required|string|min:3|max:191',
-            'employee_code' => 'required|string|min:3|max:191',
+            'employee_code' => 'required|string|min:3|max:191|unique:users,employee_code',
             'password' => 'required|string|min:5|max:30',
             'email' => 'required|email|unique:users,email',
             'institute' => 'required|in:NIOH,ROHC,BOTH'
@@ -122,7 +134,7 @@ class UserController extends Controller
             'first_name' => 'required|string|min:3|max:191',
             'middle_name' => 'nullable|string|min:3|max:191',
             'last_name' => 'required|string|min:3|max:191',
-            'employee_code' => 'required|string|min:3|max:191',
+            'employee_code' => "required|string|min:3|max:191|unique:users,employee_code,$id,id",
             'email' => "required|email|unique:users,email,$id,id",
             'institute' => 'required|in:NIOH,ROHC,BOTH'
         ]);

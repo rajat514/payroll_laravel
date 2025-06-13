@@ -47,4 +47,9 @@ class NetSalary extends Model
     {
         return $this->hasOne(Deduction::class);
     }
+
+    function employeeBank(): BelongsTo
+    {
+        return $this->belongsTo(EmployeeBankAccount::class);
+    }
 }

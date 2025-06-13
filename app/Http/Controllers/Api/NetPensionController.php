@@ -15,7 +15,7 @@ class NetPensionController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = NetPension::with('pensionerDeduction', 'monthlyPension');
+        $query = NetPension::with('pensionerDeduction', 'monthlyPension', 'pensioner.employee');
 
         $query->when(
             request('month'),
@@ -74,7 +74,7 @@ class NetPensionController extends Controller
 
     function show($id)
     {
-        $data = NetPension::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'pensionerDeduction', 'monthlyPension')->find($id);
+        $data = NetPension::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'pensionerDeduction', 'monthlyPension', 'pensioner.employee', 'pensionerBank')->find($id);
 
         return response()->json(['data' => $data]);
     }

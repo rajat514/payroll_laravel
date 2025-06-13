@@ -97,7 +97,8 @@ class DearnessReliefController extends Controller
             'dr_percentage' => 'required|numeric'
         ]);
 
-        $isSmallDate = DearnessRelief::where('effective_from', '>=', $request['effective_from'])->get()->first();
+        $isSmallDate = DearnessRelief::where('effective_from', '>', $request['effective_from'])->get()->first();
+        // return response()->json(['successMsg' => 'Dearness relief update successfully', 'data' => $isSmallDate], 200);
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();

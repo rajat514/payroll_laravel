@@ -18,7 +18,7 @@ class PensionDocumentController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PensionerDocuments::with('pensioner', 'addedBy.role', 'editedBy.role');
+        $query = PensionerDocuments::with('pensioner.employee', 'addedBy.role', 'editedBy.role');
 
         $total_count = $query->count();
 
@@ -79,7 +79,7 @@ class PensionDocumentController extends Controller
      */
     public function show(string $id)
     {
-        $data = PensionerDocuments::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy',)->find($id);
+        $data = PensionerDocuments::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'pensioner.employee')->find($id);
 
         return response()->json(['data' => $data]);
     }

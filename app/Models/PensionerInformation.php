@@ -12,6 +12,17 @@ class PensionerInformation extends Model
 {
     use HasFactory;
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return implode(' ', array_filter([
+            $this->first_name,
+            $this->middle_name,
+            $this->last_name,
+        ]));
+    }
+
     public function history(): HasMany
     {
         return $this->hasMany(PensionerInformationClone::class);
@@ -29,7 +40,7 @@ class PensionerInformation extends Model
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'retired_employee_id')->select('id', 'first_name', 'last_name', 'date_of_birth', 'date_of_joining', 'date_of_retirement');
+        return $this->belongsTo(Employee::class, 'retired_employee_id')->select('id', 'first_name', 'middle_name', 'last_name', 'employee_code', 'date_of_birth', 'date_of_joining', 'date_of_retirement');
     }
 
     public function bankAccount(): HasOne

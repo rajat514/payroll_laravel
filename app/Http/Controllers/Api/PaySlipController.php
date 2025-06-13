@@ -95,7 +95,7 @@ class PaySlipController extends Controller
         if (!$employee) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 
         $employeeBank = EmployeeBankAccount::find($request['employee_bank_id']);
-        if (!$employeeBank) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
+        if (!$employeeBank || $employeeBank->employee_id != $employee->id) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
         if (!$employeeBank->is_active) return response()->json(['errorMsg' => 'Please fill the correct Bank'], 400);
 
         $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($request['pay_structure_id']);
@@ -125,13 +125,13 @@ class PaySlipController extends Controller
             if (!$houseRentAllowance) {
                 return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
             }
-            $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
+            $hraAmount += ($basicPay + $npaAmount) * ($houseRentAllowance->rate_percentage / 100);
         } else {
             if ($employeeQuarter && !$employeeQuarter->is_occupied) {
                 if (!$houseRentAllowance) {
                     return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
                 }
-                $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
+                $hraAmount += ($basicPay + $npaAmount) * ($houseRentAllowance->rate_percentage / 100);
             }
         }
 
@@ -163,7 +163,6 @@ class PaySlipController extends Controller
         $netSalary->payment_date = $request['payment_date'];
         $netSalary->net_amount = 0;
         $netSalary->employee_bank_id = $request['employee_bank_id'];
-        $netSalary->verified_by = auth()->id();
         $netSalary->added_by = auth()->id();
 
         try {
@@ -194,6 +193,7 @@ class PaySlipController extends Controller
         } else {
             $taAmount += $taRate->amount;
         }
+        $daOnTa = ($taAmount * 50) / 100;
 
         // $uaRates = UniformAllowanceRate::find($request['uniform_rate_id'])->orderBy('effective_from', 'DESC');
         // if (!$uaRates) {
@@ -223,7 +223,7 @@ class PaySlipController extends Controller
         //     $basicPay = $basicPay / 2;
         // }
         $sum = $request['govt_contribution'] +  $request['pay_plus_npa'] + $request['spacial_pay'] + $request['arrears'] + $request['da_1'] + $request['da_2'] + $request['itc_leave_salary'];
-        $totalBasicSalary = $basicPay + $taAmount + $gisAmount + $npaAmount + $hraAmount + $daRateAmount + $uaRateAmount + $sum;
+        $totalBasicSalary = $basicPay + $taAmount + $gisAmount + $npaAmount + $hraAmount + $daRateAmount + $uaRateAmount + $daOnTa + $sum;
 
         $net_salary->net_amount = $totalBasicSalary;
         try {
@@ -251,7 +251,7 @@ class PaySlipController extends Controller
         $salaryPay->uniform_rate_amount = $uaRateAmount;
         $salaryPay->pay_plus_npa = $request['pay_plus_npa'];
         $salaryPay->govt_contribution = $request['govt_contribution'];
-        $salaryPay->da_on_ta = $request['da_on_ta'];
+        $salaryPay->da_on_ta = $daOnTa;
         $salaryPay->arrears = $request['arrears'];
         $salaryPay->spacial_pay = $request['spacial_pay'];
         $salaryPay->da_1 = $request['da_1'];
@@ -342,6 +342,7 @@ class PaySlipController extends Controller
         } else {
             $taAmount += $taRate->amount;
         }
+        $daOnTa = ($taAmount * 50) / 100;
 
         if ($employee->npa_eligibility) {
             $nonPracticingAllowance = NonPracticingAllowanceRate::find($request['npa_rate_id']);
@@ -388,7 +389,7 @@ class PaySlipController extends Controller
         }
         $daRateAmount = $totalOfBasicPayAndNPA * ($dearnessAllowanceRate->rate_percentage / 100);
         $sum = $request['govt_contribution'] +  $request['pay_plus_npa'] + $request['spacial_pay'] + $request['arrears'] + $request['da_1'] + $request['da_2'] + $request['itc_leave_salary'];
-        $totalBasicSalary = $basicPay + $taAmount + $npaAmount + $hraAmount + $salaryPay->da_amount + $uaRateAmount + $sum;
+        $totalBasicSalary = $basicPay + $taAmount + $npaAmount + $hraAmount + $salaryPay->da_amount + $uaRateAmount + $daOnTa + $sum;
 
         DB::beginTransaction();
 
@@ -409,7 +410,7 @@ class PaySlipController extends Controller
         $salaryPay->uniform_rate_amount = $uaRateAmount;
         $salaryPay->pay_plus_npa = $request['pay_plus_npa'];
         $salaryPay->govt_contribution = $request['govt_contribution'];
-        $salaryPay->da_on_ta = $request['da_on_ta'];
+        $salaryPay->da_on_ta = $daOnTa;
         $salaryPay->arrears = $request['arrears'];
         $salaryPay->spacial_pay = $request['spacial_pay'];
         $salaryPay->da_1 = $request['da_1'];
@@ -469,6 +470,14 @@ class PaySlipController extends Controller
         //     return response()->json(['errorMsg' => 'No employee found for this requirement!'], 404);
         // }
         foreach ($lastVerifiedEmployee as $employeeData) {
+            $taAmount = 0; // Transport Allowance
+            $gisAmount = 0;
+            // $csmAmount = 0; // Credit society Member
+            $npaAmount = 0; // Non Practicing Allowance
+            $hraAmount = 0; // House Rent Allowance
+            $daRateAmount = 0; // Dearness Allowance Rate
+            $uaRateAmount = 0; // Uniform Allowance Rate 
+            $totalBasicSalary = 0;
             // return response()->json(['data', $employeeData]);
 
             $employee = Employee::find($employeeData->employee_id);
@@ -506,13 +515,13 @@ class PaySlipController extends Controller
                 if (!$houseRentAllowance) {
                     return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
                 }
-                $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
+                $hraAmount += ($basicPay + $npaAmount) * ($houseRentAllowance->rate_percentage / 100);
             } else {
                 if ($employeeQuarter && !$employeeQuarter->is_occupied) {
                     if (!$houseRentAllowance) {
                         return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
                     }
-                    $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
+                    $hraAmount += ($basicPay + $npaAmount) * ($houseRentAllowance->rate_percentage / 100);
                 }
             }
 
@@ -544,7 +553,6 @@ class PaySlipController extends Controller
             $netSalary->payment_date = $request['payment_date'];
             $netSalary->net_amount = 0;
             $netSalary->employee_bank_id = $employeeData->employee_bank_id;
-            $netSalary->verified_by = auth()->id();
             $netSalary->added_by = auth()->id();
 
             try {
@@ -575,6 +583,7 @@ class PaySlipController extends Controller
             } else {
                 $taAmount += $taRate->amount;
             }
+            $daOnTa = ($taAmount * 50) / 100;
 
             $payMatrixCell = PayMatrixCell::with('payMatrixLevel')->where('index', $employeePayCell->index)->orderBy('amount', 'DESC')->get();
 
@@ -584,7 +593,7 @@ class PaySlipController extends Controller
             }
             $daRateAmount = $totalOfBasicPayAndNPA * ($dearnessAllowanceRate->rate_percentage / 100);
             $sum = $employeeData->paySlip->govt_contribution +  $employeeData->paySlip->pay_plus_npa + $employeeData->paySlip->spacial_pay + $employeeData->paySlip->arrears + $employeeData->paySlip->da_1 + $employeeData->paySlip->da_2 + $employeeData->paySlip->itc_leave_salary;
-            $totalBasicSalary = $basicPay + $taAmount + $gisAmount + $npaAmount + $hraAmount + $daRateAmount + $uaRateAmount + $sum;
+            $totalBasicSalary = $basicPay + $taAmount + $gisAmount + $npaAmount + $hraAmount + $daRateAmount + $uaRateAmount + $daOnTa + $sum;
 
             $net_salary->net_amount = $totalBasicSalary;
             try {
@@ -611,7 +620,7 @@ class PaySlipController extends Controller
             $salaryPay->uniform_rate_amount = $uaRateAmount;
             $salaryPay->pay_plus_npa = $employeeData->paySlip->pay_plus_npa;
             $salaryPay->govt_contribution = $employeeData->paySlip->govt_contribution;
-            $salaryPay->da_on_ta = $employeeData->paySlip->da_on_ta;
+            $salaryPay->da_on_ta = $daOnTa;
             $salaryPay->arrears = $employeeData->paySlip->arrears;
             $salaryPay->spacial_pay = $employeeData->paySlip->spacial_pay;
             $salaryPay->da_1 = $employeeData->paySlip->da_1;
@@ -628,6 +637,23 @@ class PaySlipController extends Controller
                 return response()->json(['errorMsg' => $e->getMessage()], 500);
             }
         }
-        return response()->json(['successMsg' => 'salary generated!']);
+
+        // $generatedSalaries = Employee::whereHas(
+        //     'netSalary',
+        //     fn($q) => $q->where('month', 'LIKE', '5')
+        //         ->where('year', 'LIKE', '2026')
+        // )->get();
+
+        $generatedSalaries = Employee::whereHas(
+            'netSalary',
+            fn($q) => $q->where('month', $request['month'])
+                ->where('year', $request['year'])
+        )->with([
+            'netSalary' =>
+            fn($q) => $q->where('month', $request['month'])
+                ->where('year', $request['year'])
+        ])->get();
+
+        return response()->json(['successMsg' => 'salary generated!', 'data' => $generatedSalaries]);
     }
 }

@@ -21,6 +21,11 @@ class PensionRelatedInfo extends Model
         return $this->hasMany(Arrears::class, 'arrear_id');
     }
 
+    public function pensioner(): BelongsTo
+    {
+        return $this->belongsTo(PensionerInformation::class);
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');

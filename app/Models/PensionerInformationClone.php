@@ -47,6 +47,17 @@ class PensionerInformationClone extends Model
         'edited_by',
     ];
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return implode(' ', array_filter([
+            $this->first_name,
+            $this->middle_name,
+            $this->last_name,
+        ]));
+    }
+
     public function addedBy(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');

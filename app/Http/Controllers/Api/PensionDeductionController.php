@@ -22,7 +22,7 @@ class PensionDeductionController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PensionDeduction::with('netPension', 'addedBy.role', 'editedBy.role', 'netPension.pensioner');
+        $query = PensionDeduction::with('addedBy.role', 'editedBy.role', 'netPension');
 
         $total_count = $query->count();
 
@@ -95,7 +95,7 @@ class PensionDeductionController extends Controller
      */
     public function show(string $id)
     {
-        $data = PensionDeduction::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.netPension.pensioner')->find($id);
+        $data = PensionDeduction::with('addedBy', 'editedBy', 'netPension.pensioner.employee', 'history.addedBy', 'history.editedBy', 'history.netPension.pensioner')->find($id);
 
         return response()->json(['data' => $data]);
     }

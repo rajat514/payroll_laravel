@@ -24,6 +24,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/user', [\App\Http\Controllers\Api\UserController::class, 'user']);
 
     Route::get('/users', [\App\Http\Controllers\Api\UserController::class, 'index']);
+    Route::get('/all-users', [\App\Http\Controllers\Api\UserController::class, 'allUsers']);
 
     Route::get('/user-status/{id}', [\App\Http\Controllers\Api\UserController::class, 'changeStatus']);
 
@@ -58,6 +59,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('pensioner-status/{id}', [\App\Http\Controllers\Api\PensionerController::class, 'changeStatus']);
 
     Route::apiResource('pay-matrix-levels', \App\Http\Controllers\Api\PayMatrixLevelController::class)->except(['destroy,show']);
+    Route::get('level-by-commission/{id}', [\App\Http\Controllers\Api\PayMatrixLevelController::class, 'levelBycommission']);
 
     Route::apiResource('pay-matrix-cells', \App\Http\Controllers\Api\PayMatrixCellController::class)->except(['destroy,show']);
 

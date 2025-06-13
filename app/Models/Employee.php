@@ -11,6 +11,17 @@ class Employee extends Model
 {
     use HasFactory;
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return implode(' ', array_filter([
+            $this->first_name,
+            $this->middle_name,
+            $this->last_name,
+        ]));
+    }
+
     public function employeeStatus(): HasMany
     {
         return $this->hasMany(EmployeeStatus::class);

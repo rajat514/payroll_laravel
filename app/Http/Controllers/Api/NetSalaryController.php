@@ -16,7 +16,7 @@ class NetSalaryController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = NetSalary::with('addedBy', 'editedBy', 'verifiedBy:id,name,role_id', 'deduction', 'paySlip');
+        $query = NetSalary::with('deduction', 'paySlip');
 
         $query->when(
             request('employee_id'),
@@ -31,6 +31,11 @@ class NetSalaryController extends Controller
         $query->when(
             request('year'),
             fn($q) => $q->where('year', request('year'))
+        );
+
+        $query->when(
+            request('is_verified') != null,
+            fn($q) => $q->where('is_verified', request('is_verified'))
         );
 
         $total_count = $query->count();
@@ -125,6 +130,7 @@ class NetSalaryController extends Controller
     {
         $netSalary = NetSalary::with(
             'employee.employeeDesignation',
+            'employeeBank',
             'deduction',
             'paySlip',
             'verifiedBy',
@@ -132,7 +138,8 @@ class NetSalaryController extends Controller
             'addedBy',
             'editedBy',
             'history.addedBy',
-            'history.editedBy'
+            'history.editedBy',
+            'history.employee'
         )->find($id);
 
         return response()->json(['data' => $netSalary]);
