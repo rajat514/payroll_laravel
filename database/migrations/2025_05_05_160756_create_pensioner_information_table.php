@@ -16,23 +16,23 @@ return new class extends Migration
             $table->string('ppo_no', 20)->unique();
             $table->string('name', 100);
             $table->enum('type_of_pension', ['Regular', 'Family']);
-            $table->foreignId('retired_employee_id')->constrained('employees');
+            $table->foreignId('retired_employee_id')->nullable()->constrained('employees');
             $table->enum('relation', ['Self', 'Spouse', 'Son', 'Daughter', 'Other']);
-            $table->date('dob'); // Date of Birth
-            $table->date('doj'); // Date of Joining
-            $table->date('dor'); // Date of Retirement
+            $table->date('dob')->nullable(); // Date of Birth
+            $table->date('doj')->nullable(); // Date of Joining
+            $table->date('dor')->nullable(); // Date of Retirement
             $table->date('end_date')->nullable(); // Pension end date (if applicable)
             $table->enum('status', ['Active', 'Expired', 'Suspended']);
-            $table->string('pan_number', 10);
-            $table->string('pay_level', 50);
-            $table->string('pay_commission', 50);
+            $table->string('pan_number', 10)->nullable();
+            $table->string('pay_level', 50)->nullable();
+            $table->string('pay_commission', 50)->nullable();
             $table->string('equivalent_level', 50);
             $table->text('address');
             $table->string('city', 50);
             $table->string('state', 50);
             $table->string('pin_code', 10);
-            $table->string('mobile_no', 15);
-            $table->string('email', 100);
+            $table->string('mobile_no', 15)->nullable();
+            $table->string('email', 100)->nullable();
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();

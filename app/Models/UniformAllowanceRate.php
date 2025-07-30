@@ -13,16 +13,16 @@ class UniformAllowanceRate extends Model
 
     function history(): HasMany
     {
-        return $this->hasMany(UniformAllowanceRateClone::class, 'uniform_allowance_id');
+        return $this->hasMany(UniformAllowanceRateClone::class, 'uniform_allowance_id')->orderBy('created_at', 'DESC');
     }
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 }

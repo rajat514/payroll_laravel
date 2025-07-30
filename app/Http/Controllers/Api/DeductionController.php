@@ -4,10 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Deduction;
+use App\Models\DeductionRecoveries;
+use App\Models\DeductionRecoveryClone;
+use App\Models\DeductionRecoveryClones;
 use App\Models\Employee;
 use App\Models\EmployeePayStructure;
 use App\Models\GISEligibility;
 use App\Models\NetSalary;
+use App\Models\PaySlipClone;
+use App\Models\SalaryArrearClone;
+use App\Models\SalaryArrears;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -23,19 +29,19 @@ class DeductionController extends Controller
 
         $query->when(
             request('net_salary_id'),
-            fn($q) => $q->where('net_salary_id', 'LIKE', '%' . request('net_salary_id') . '%')
+            fn($q) => $q->where('net_salary_id', request('net_salary_id'))
         );
 
         $total_count = $query->count();
 
-        $data = $query->orderBy('created_at', 'ASC')->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function show($id)
     {
-        $data = Deduction::with('addedBy', 'editedBy', 'history.editedBy')->find($id);
+        $data = Deduction::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }
@@ -81,7 +87,7 @@ class DeductionController extends Controller
         if (!$employee) {
             return response()->json(['errorMsg' => 'Employee not found!'], 404);
         }
-        $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($netSalary->employee_id);
+        $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($netSalary->paySlip->pay_structure_id);
         if (!$employeePayStructure) {
             return response()->json(['errorMsg' => 'Employee Pay Structure not found!'], 404);
         }
@@ -96,6 +102,7 @@ class DeductionController extends Controller
         if ($employee->gis_eligibility) {
             $gisAmount = $employeeGIS->amount;
         }
+        // return response()->json(['errorMsg' => 'Employee GIS not found!', 'data' => $gisAmount]);
 
         if ($employee->credit_society_member) {
             if (!$request['credit_society_membership']) {
@@ -105,10 +112,27 @@ class DeductionController extends Controller
 
 
 
-        $totalDeduction = $request['income_tax'] + $request['professional_tax'] + $request['licence_fee'] + $request['nfch_donation'] + $request['gpf'] + $request['hra_recovery']
-            + $request['computer_advance'] + $request['computer_advance_installment'] + $request['computer_advance_inst_no'] + $request['computer_advance_balance'] + $request['employee_contribution_10']
-            + $request['govt_contribution_14_recovery'] + $request['dies_non_recovery'] + $request['computer_advance_interest'] + $gisAmount + $request['pay_recovery'] + $request['nps_recovery']
-            + $request['lic'] + $request['credit_society_membership'];
+
+        $totalDeduction = $request['income_tax'] +
+            $request['professional_tax'] +
+            $request['license_fee'] +
+            $request['nfch_donation'] +
+            $request['gpf'] +
+            $request['transport_allowance_recovery'] +
+            $request['hra_recovery'] +
+            $request['computer_advance'] +
+            $request['computer_advance_installment'] +
+            $request['computer_advance_inst_no'] +
+            $request['computer_advance_balance'] +
+            $request['employee_contribution_10'] +
+            $request['govt_contribution_14_recovery'] +
+            $request['dies_non_recovery'] +
+            $request['computer_advance_interest'] +
+            $gisAmount +
+            $request['pay_recovery'] +
+            $request['nps_recovery'] +
+            $request['lic'] +
+            $request['credit_society_membership'];
 
         $deduction = new Deduction();
         $deduction->net_salary_id = $request['net_salary_id'];
@@ -118,7 +142,7 @@ class DeductionController extends Controller
         $deduction->nfch_donation = $request['nfch_donation'] ?? 0;
         $deduction->gpf = $request['gpf'] ?? 0;
         $deduction->transport_allowance_recovery = $request['transport_allowance_recovery'] ?? 0;
-        $deduction->hra_recovery = $request['npa_recovery'] ?? 0;
+        $deduction->hra_recovery = $request['hra_recovery'] ?? 0;
         $deduction->computer_advance = $request['computer_advance'] ?? 0;
         $deduction->computer_advance_installment = $request['computer_advance_installment'] ?? 0;
         $deduction->computer_advance_inst_no = $request['computer_advance_inst_no'] ?? 0;
@@ -139,6 +163,7 @@ class DeductionController extends Controller
             $deduction->save();
 
             $netSalary->net_amount = $netSalary->paySlip->total_pay - $totalDeduction;
+
 
             $netSalary->save();
 
@@ -187,7 +212,7 @@ class DeductionController extends Controller
         if (!$employee) {
             return response()->json(['errorMsg' => 'Employee not found!'], 404);
         }
-        $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($netSalary->employee_id);
+        $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($netSalary->paySlip->pay_structure_id);
         if (!$employeePayStructure) {
             return response()->json(['errorMsg' => 'Employee Pay Structure not found!'], 404);
         }
@@ -211,7 +236,57 @@ class DeductionController extends Controller
 
         DB::beginTransaction();
 
+        $net_salary_old_data = $netSalary->toArray();
+        $paySlip = $netSalary->paySlip;
+
+        $net_salary_old_data['pay_structure_id'] = $paySlip->pay_structure_id;
+        $net_salary_old_data['basic_pay'] = $paySlip->basic_pay;
+        $net_salary_old_data['da_rate_id'] = $paySlip->da_rate_id;
+        $net_salary_old_data['da_amount'] = $paySlip->da_amount;
+        $net_salary_old_data['hra_rate_id'] = $paySlip->hra_rate_id;
+        $net_salary_old_data['hra_amount'] = $paySlip->hra_amount;
+        $net_salary_old_data['npa_rate_id'] = $paySlip->npa_rate_id;
+        $net_salary_old_data['npa_amount'] = $paySlip->npa_amount;
+        $net_salary_old_data['transport_rate_id'] = $paySlip->transport_rate_id;
+        $net_salary_old_data['transport_amount'] = $paySlip->transport_amount;
+        $net_salary_old_data['uniform_rate_id'] = $paySlip->uniform_rate_id;
+        $net_salary_old_data['uniform_rate_amount'] = $paySlip->uniform_rate_amount;
+        $net_salary_old_data['pay_plus_npa'] = $paySlip->pay_plus_npa;
+        $net_salary_old_data['govt_contribution'] = $paySlip->govt_contribution;
+        $net_salary_old_data['da_on_ta'] = $paySlip->da_on_ta;
+        $net_salary_old_data['arrears'] = $paySlip->arrears;
+        $net_salary_old_data['spacial_pay'] = $paySlip->spacial_pay;
+        $net_salary_old_data['da_1'] = $paySlip->da_1;
+        $net_salary_old_data['da_2'] = $paySlip->da_2;
+        $net_salary_old_data['itc_leave_salary'] = $paySlip->itc_leave_salary;
+        $net_salary_old_data['total_pay'] = $paySlip->total_pay;
+        $net_salary_old_data['income_tax'] = $deduction->income_tax;
+        $net_salary_old_data['professional_tax'] = $deduction->professional_tax;
+        $net_salary_old_data['license_fee'] = $deduction->license_fee;
+        $net_salary_old_data['nfch_donation'] = $deduction->nfch_donation;
+        $net_salary_old_data['gpf'] = $deduction->gpf;
+        $net_salary_old_data['transport_allowance_recovery'] = $deduction->transport_allowance_recovery;
+        $net_salary_old_data['hra_recovery'] = $deduction->hra_recovery;
+        $net_salary_old_data['computer_advance'] = $deduction->computer_advance;
+        $net_salary_old_data['computer_advance_installment'] = $deduction->computer_advance_installment;
+        $net_salary_old_data['computer_advance_inst_no'] = $deduction->computer_advance_inst_no;
+        $net_salary_old_data['computer_advance_balance'] = $deduction->computer_advance_balance;
+        $net_salary_old_data['employee_contribution_10'] = $deduction->employee_contribution_10;
+        $net_salary_old_data['govt_contribution_14_recovery'] = $deduction->govt_contribution_14_recovery;
+        $net_salary_old_data['dies_non_recovery'] = $deduction->dies_non_recovery;
+        $net_salary_old_data['computer_advance_interest'] = $deduction->computer_advance_interest;
+        $net_salary_old_data['gis'] = $deduction->gis;
+        $net_salary_old_data['pay_recovery'] = $deduction->pay_recovery;
+        $net_salary_old_data['nps_recovery'] = $deduction->nps_recovery;
+        $net_salary_old_data['lic'] = $deduction->lic;
+        $net_salary_old_data['credit_society'] = $deduction->credit_society;
+        $net_salary_old_data['total_deductions'] = $deduction->total_deductions;
+        $net_salary_old_data['salary_arrears'] = json_encode($paySlip->salaryArrears); // Assuming relation or array
+        $net_salary_old_data['deduction_recoveries'] = json_encode($deduction->deductionRecoveries);
+
+
         $old_data = $deduction->toArray();
+
 
         $deduction->net_salary_id = $request['net_salary_id'];
         $deduction->income_tax = $request['income_tax'];
@@ -234,32 +309,36 @@ class DeductionController extends Controller
         $deduction->nps_recovery = $request['nps_recovery'];
         $deduction->lic = $request['lic'];
         $deduction->credit_society = $request['credit_society_membership'];
-        // $request['income_tax'] ? $deduction->income_tax = $request['income_tax'] : $deduction->income_tax;
-        // $request['professional_tax'] ? $deduction->professional_tax = $request['professional_tax'] : $deduction->professional_tax;
-        // $request['license_fee'] ? $deduction->license_fee = $request['license_fee'] : $deduction->license_fee;
-        // $request['nfch_donation'] ? $deduction->nfch_donation = $request['nfch_donation'] : $deduction->nfch_donation;
-        // $request['gpf'] ? $deduction->gpf = $request['gpf'] : $deduction->gpf;
-        // $request['hra_recovery'] ? $deduction->hra_recovery = $request['hra_recovery'] : $deduction->hra_recovery;
-        // $request['transport_allowance_recovery'] ? $deduction->transport_allowance_recovery = $request['transport_allowance_recovery'] : $deduction->transport_allowance_recovery;
-        // $request['computer_advance'] ? $deduction->computer_advance = $request['computer_advance'] : $deduction->computer_advance;
-        // $request['computer_advance_installment'] ? $deduction->computer_advance_installment = $request['computer_advance_installment'] : $deduction->computer_advance_installment;
-        // $request['computer_advance_inst_no'] ? $deduction->computer_advance_inst_no = $request['computer_advance_inst_no'] : $deduction->computer_advance_inst_no;
-        // $request['computer_advance_balance'] ? $deduction->computer_advance_balance = $request['computer_advance_balance'] : $deduction->computer_advance_balance;
-        // $request['employee_contribution_10'] ? $deduction->employee_contribution_10 = $request['employee_contribution_10'] : $deduction->employee_contribution_10;
-        // $request['govt_contribution_14_recovery'] ? $deduction->govt_contribution_14_recovery = $request['govt_contribution_14_recovery'] : $deduction->govt_contribution_14_recovery;
-        // $request['dies_non_recovery'] ? $deduction->dies_non_recovery = $request['dies_non_recovery'] : $deduction->dies_non_recovery;
-        // $request['computer_advance_interest'] ? $deduction->computer_advance_interest = $request['computer_advance_interest'] : $deduction->computer_advance_interest;
-        // $deduction->gis = $gisAmount;
-        // $request['pay_recovery'] ? $deduction->pay_recovery = $request['pay_recovery'] : $deduction->pay_recovery;
-        // $request['nps_recovery'] ? $deduction->nps_recovery = $request['nps_recovery'] : $deduction->nps_recovery;
-        // $request['lic'] ? $deduction->lic = $request['lic'] : $deduction->lic;
-        // $request['credit_society_membership'] ? $deduction->credit_society = $request['credit_society_membership'] : $deduction->credit_society;
 
+        // $deductionRecoverySum = DeductionRecoveries::where('deduction_id', $deduction->id)->sum('amount');
+        $deductionRecoveryTotal = 0;
+        if ($request->filled('deduction_recoveries')) {
+            foreach ($request->deduction_recoveries as $item) {
+                $deductionRecoveryTotal += $item['amount'];
+            }
+        }
 
-        $totalDeduction = $deduction->income_tax + $deduction->professional_tax + $deduction->licence_fee + $deduction->nfch_donation + $deduction->gpf + $deduction->hra_amount
-            + $deduction->computer_advance + $deduction->computer_advance_installment + $deduction->computer_advance_inst_no + $deduction->computer_advance_balance + $deduction->employee_contribution_10
-            + $deduction->govt_contribution_14_recovery + $deduction->dies_non_recovery + $deduction->computer_advance_interest + $deduction->gis + $deduction->pay_recovery + $deduction->nps_recovery
-            + $deduction->lic + $deduction->credit_society;
+        $totalDeduction = $deduction->income_tax +
+            $deduction->professional_tax +
+            $deduction->license_fee +
+            $deduction->nfch_donation +
+            $deduction->gpf +
+            $deduction->hra_recovery +
+            $deduction->transport_allowance_recovery +
+            $deduction->computer_advance +
+            $deduction->computer_advance_installment +
+            $deduction->computer_advance_inst_no +
+            $deduction->computer_advance_balance +
+            $deduction->employee_contribution_10 +
+            $deduction->govt_contribution_14_recovery +
+            $deduction->dies_non_recovery +
+            $deduction->computer_advance_interest +
+            $deduction->gis +
+            $deduction->pay_recovery +
+            $deduction->nps_recovery  +
+            $deduction->lic +
+            $deduction->credit_society +
+            $deductionRecoveryTotal;
 
         $deduction->total_deductions = $totalDeduction;
         $deduction->edited_by = auth()->id();
@@ -268,10 +347,62 @@ class DeductionController extends Controller
             $deduction->save();
 
             $netSalary->net_amount = $netSalary->paySlip->total_pay - $deduction->total_deductions;
+            $netSalary->edited_by = auth()->id();
 
             $netSalary->save();
 
-            $deduction->history()->create($old_data);
+            $net_salary_clone = $netSalary->history()->create($net_salary_old_data);
+            // $old_data['net_salary_clone_id'] = $net_salary_clone->id;
+
+            // $deductionClone = $deduction->history()->create($old_data);
+
+            // $old_pay_slip_data = $netSalary->paySlip->toArray();
+            // $old_pay_slip_data['pay_slip_id'] = $netSalary->paySlip->id;
+            // $old_pay_slip_data['net_salary_clone_id'] = $net_salary_clone->id;
+            // $paySlipClone = PaySlipClone::create($old_pay_slip_data);
+
+            // $old_arrears = SalaryArrears::where('pay_slip_id', $netSalary->paySlip->id)->get()->toArray();
+            // foreach ($old_arrears as $old_arrear) {
+            //     unset($old_arrear['id']); // remove ID to avoid duplication
+            //     $old_arrear['net_salary_clone_id'] = $net_salary_clone->id;
+            //     $old_arrear['pay_slip_id'] = $netSalary->paySlip->id;
+            //     $old_arrear['pay_slip_clone_id'] = $paySlipClone->id;
+
+            //     // If you have history() relation (recommended)
+            //     SalaryArrearClone::create($old_arrear);
+
+            //     // OR, if you're saving in a separate `salary_arrear_histories` table manually
+            //     // SalaryArrearHistory::create($old_arrear);
+            // }
+
+            // $old_recoveries = DeductionRecoveries::where('deduction_id', $deduction->id)->get()->toArray();
+            // foreach ($old_recoveries as $old_recovery) {
+            //     unset($old_recovery['id']); // remove ID to avoid duplication
+            //     $old_recovery['net_salary_clone_id'] = $net_salary_clone->id;
+            //     $old_recovery['duduction_id'] = $deduction->id;
+            //     $old_recovery['deduction_clone_id'] = $deductionClone->id;
+
+            //     // If you have history() relation (recommended)
+            //     DeductionRecoveryClones::create($old_recovery);
+
+            //     // OR, if you're saving in a separate `salary_arrear_histories` table manually
+            //     // SalaryArrearHistory::create($old_arrear);
+            // }
+
+            // Delete previous arrears
+            DeductionRecoveries::where('deduction_id', $deduction->id)->delete();
+
+            // Recreate from new request data
+            if ($request->filled('deduction_recoveries')) {
+                foreach ($request->deduction_recoveries as $item) {
+                    DeductionRecoveries::create([
+                        'deduction_id' => $deduction->id,
+                        'type' => $item['type'],
+                        'amount' => $item['amount'],
+                        'added_by' => auth()->id(),
+                    ]);
+                }
+            }
 
             DB::commit();
             return response()->json(['successMsg' => 'Deduction updated!', 'data' => $deduction]);

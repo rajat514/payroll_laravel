@@ -13,32 +13,30 @@ class MonthlyPension extends Model
 
     // protected $primaryKey = 'pension_id';
 
-    // protected $fillable = [
-    //     'pension_rel_info_id',
-    //     'pensioner_id',
-    //     'month',
-    //     'basic_pension',
-    //     'commutation_amount',
-    //     'additional_pension',
-    //     'dr_id',
-    //     'dr_amount',
-    //     'medical_allowance',
-    //     'total_pension',
-    //     'total_recovery',
-    //     'net_pension',
-    //     'remarks',
-    //     'status'
-    // ];
+    protected $fillable = [
+        'pension_rel_info_id',
+        'net_pension_id',
+        'basic_pension',
+        'additional_pension',
+        'dr_id',
+        'dr_amount',
+        'medical_allowance',
+        'total_pension',
+        'remarks',
+        'status',
+        'added_by',
+        'edited_by'
+    ];
 
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function dearness()
@@ -48,7 +46,7 @@ class MonthlyPension extends Model
 
     public function history(): HasMany
     {
-        return $this->hasMany(MonthlyPensionClone::class, 'monthly_pension_id');
+        return $this->hasMany(MonthlyPensionClone::class, 'monthly_pension_id')->orderBy('created_at', 'DESC');
     }
 
     public function pensionRelatedInfo(): BelongsTo
@@ -57,6 +55,6 @@ class MonthlyPension extends Model
     }
     public function netPension(): BelongsTo
     {
-        return $this->belongsTo(NetPension::class);
+        return $this->belongsTo(NetPension::class, 'net_pension_id');
     }
 }

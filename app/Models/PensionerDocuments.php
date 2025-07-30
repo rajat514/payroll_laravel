@@ -14,17 +14,17 @@ class PensionerDocuments extends Model
 
     public function history(): HasMany
     {
-        return $this->hasMany(PensionerDocumentClone::class, 'pensioner_document_id');
+        return $this->hasMany(PensionerDocumentClone::class, 'pensioner_document_id')->orderBy('created_at', 'DESC');
     }
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function monthlyPension()

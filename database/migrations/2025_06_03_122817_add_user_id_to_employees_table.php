@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             // $table->foreignId('user_id')->nullable()->constrained('users');
-            $table->string('middle_name');
-            $table->string('employee_code');
-            $table->enum('prefix', ['Mr.', 'Mrs.', 'Ms.', 'Dr.']);
-            $table->enum('institute', ['NIOH', 'ROHC', 'BOTH'])->change();
+            $table->string('middle_name')->nullable();
+            $table->string('employee_code')->nullable();
+            $table->enum('prefix', ['Mr.', 'Mrs.', 'Ms.', 'Dr.'])->nullable();
+            $table->enum('institute', ['NIOH', 'ROHC', 'BOTH'])->nullable()->change();
         });
 
         Schema::table('users', function (Blueprint $table) {

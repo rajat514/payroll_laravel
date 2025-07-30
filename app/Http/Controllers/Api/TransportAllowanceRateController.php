@@ -10,6 +10,22 @@ use Illuminate\Support\Facades\DB;
 
 class TransportAllowanceRateController extends Controller
 {
+
+    private \App\Models\User $user;
+
+    private $can_view_roles = ['IT Admin', 'Director', 'Administrative Officer', 'Account Officer', 'Coordinator - NIOH', 'Coordinator - ROHC', 'Pension Operator', 'End Users'];
+    private $can_post_roles = ['IT Admin', 'Director', 'Administrative Officer', 'Account Officer', 'Coordinator - NIOH', 'Coordinator - ROHC', 'Pension Operator'];
+    private $can_view_own_roles = ['Coordinator - NIOH', 'Coordinator - ROHC', 'Pension Operator'];
+    private $all_permission_roles = ['IT Admin', 'Director'];
+
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
         $page = request('page') ? (int)request('page') : 1;
@@ -20,15 +36,20 @@ class TransportAllowanceRateController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function store(Request $request)
     {
+
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
         $request->validate([
-            'pay_matrix_level' => 'required|string',
+            'pay_matrix_level' => 'required|string|unique:employee_transport_allowances,pay_matrix_level',
             'amount' => 'required|numeric',
         ]);
 
@@ -48,12 +69,15 @@ class TransportAllowanceRateController extends Controller
 
     function update(Request $request, $id)
     {
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
 
         $transportAllowance = EmployeeTransportAllowance::find($id);
         if (!$transportAllowance) return response()->json(['errorMsg' => 'Transport Allowance Rate not found!'], 404);
 
         $request->validate([
-            'pay_matrix_level' => 'required|string',
+            'pay_matrix_level' => "required|string|unique:employee_transport_allowances,pay_matrix_level,$id,id",
             'amount' => 'required|numeric',
         ]);
 
@@ -81,7 +105,7 @@ class TransportAllowanceRateController extends Controller
 
     function show($id)
     {
-        $data = EmployeeTransportAllowance::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = EmployeeTransportAllowance::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }

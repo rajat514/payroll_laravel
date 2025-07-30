@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('pay_slip_id');
             $table->string('net_salary_id');
+            $table->string('net_salary_clone_id')->nullable();
             $table->string('pay_structure_id');
             $table->float('basic_pay', 12, 2);
             $table->string('da_rate_id')->nullable();

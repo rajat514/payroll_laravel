@@ -12,20 +12,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\Role::insert([
-            ['name' => 'Admin'],
-            ['name' => 'Account Officer'],
-            ['name' => 'Coordinator'],
-            ['name' => 'Pensioner Operator'],
-            ['name' => 'User'],
-        ]);
+        $this->call(
+            RoleSeeder::class
+        );
 
-        \App\Models\User::create([
-            'role_id' => 1,
-            'name' => 'Admin',
+        $user = \App\Models\User::create([
+            'name' => 'IT Admin',
             'email' => 'admin@nioh.com',
             'password' => \Illuminate\Support\Facades\Hash::make('123456')
         ]);
+        $user->assignRole('IT Admin');
 
         \App\Models\PayMatrixLevel::insert([
             ['name' => '1'],

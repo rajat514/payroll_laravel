@@ -23,13 +23,13 @@ class EmployeeDesignationController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function show($id)
     {
-        $data = EmployeeDesignation::with('addedBy', 'editedBy', 'history.editedBy')->find($id);
+        $data = EmployeeDesignation::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
         return response()->json(['data' => $data]);
     }
 
@@ -55,7 +55,7 @@ class EmployeeDesignationController extends Controller
         DB::beginTransaction();
 
         if ($designation) {
-            $designation->effective_till = $request['effective_from'];
+            $designation->effective_till = \Carbon\Carbon::parse($request['effective_from'])->subDay()->format('Y-m-d');
             try {
                 DB::commit();
                 $designation->save();
@@ -101,8 +101,8 @@ class EmployeeDesignationController extends Controller
             ]
         );
 
-        $isSmallDate = EmployeeDesignation::where('employee_id', $request['employee_id'])->where('effective_from', '>', $request['effective_from'])->get()->first();
-        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+        // $isSmallDate = EmployeeDesignation::where('employee_id', $request['employee_id'])->where('effective_from', '>', $request['effective_from'])->get()->first();
+        // if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

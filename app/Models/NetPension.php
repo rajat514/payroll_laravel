@@ -14,12 +14,12 @@ class NetPension extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function monthlyPension(): HasOne
@@ -34,7 +34,7 @@ class NetPension extends Model
 
     public function history(): HasMany
     {
-        return $this->hasMany(NetPensionClone::class);
+        return $this->hasMany(NetPensionClone::class)->orderBy('created_at', 'DESC');
     }
 
     public function pensioner(): BelongsTo

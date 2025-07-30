@@ -23,16 +23,16 @@ class EmployeeQuarter extends Model
 
     function addedby(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     function editedby(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     function history(): HasMany
     {
-        return $this->hasMany(EmployeeQuarterClone::class);
+        return $this->hasMany(EmployeeQuarterClone::class)->orderBy('created_at', 'DESC');
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 use App\Models\EmployeeQuarter;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ class EmployeeQuarterController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -47,13 +48,20 @@ class EmployeeQuarterController extends Controller
             ]
         );
 
+        $employee = Employee::find($request['employee_id']);
+        if (!$employee) return response()->json(['errorMsg' => 'Employee Not Found!']);
+
+        if ($employee->date_of_joining > $request['date_of_allotment']) {
+            return response()->json(['errorMsg' => 'Date of allotement date is smaller than the date of joining of employee!',], 404);
+        }
+
         $checkQuarter = EmployeeQuarter::where('quarter_id', $request['quarter_id'])->value('id');
         if ($checkQuarter) return response()->json(['errorMsg' => 'This Quarter has already alloted!']);
 
-        $isSmallAllotmentDate = EmployeeQuarter::where('date_of_allotment', '>=', $request['date_of_allotment'])->get()->first();
+        $isSmallAllotmentDate = EmployeeQuarter::where('employee_id', $request['employee_id'])->where('date_of_allotment', '>=', $request['date_of_allotment'])->get()->first();
         if ($isSmallAllotmentDate) return response()->json(['errorMsg' => 'Date of allotment is smaller than previous!'], 400);
 
-        $isSmallOccupationDate = EmployeeQuarter::where('date_of_occupation', '>=', $request['date_of_occupation'])->get()->first();
+        $isSmallOccupationDate = EmployeeQuarter::where('employee_id', $request['employee_id'])->where('date_of_occupation', '>=', $request['date_of_occupation'])->get()->first();
         if ($isSmallOccupationDate) return response()->json(['errorMsg' => 'Date of occupation is smaller than previous!'], 400);
 
         $employeeQuarter = new EmployeeQuarter();
@@ -66,7 +74,13 @@ class EmployeeQuarterController extends Controller
         $employeeQuarter->order_reference = $request['order_reference'];
         $employeeQuarter->added_by = auth()->id();
 
+        $employee->hra_eligibility = 0;
+
+        $employeeQuarter->is_occupied = \Carbon\Carbon::parse($request['date_of_occupation'])->lte(\Carbon\Carbon::today()) ? 1 : 0;
+
+
         try {
+            $employee->save();
             $employeeQuarter->save();
 
             return response()->json(['successMsg' => 'Employee Quarter Created!', 'data' => $employeeQuarter]);
@@ -92,6 +106,9 @@ class EmployeeQuarterController extends Controller
                 'is_occupied' => 'boolean|in:1,0'
             ]
         );
+
+        $employee = Employee::find($request['employee_id']);
+        if (!$employee) return response()->json(['errorMsg' => 'Employee Not Found!']);
 
         DB::beginTransaction();
 
@@ -147,7 +164,14 @@ class EmployeeQuarterController extends Controller
 
     function show($id)
     {
-        $data = EmployeeQuarter::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = EmployeeQuarter::with(
+            'quarter',
+            'history.quarter',
+            'history.addedBy.roles:id,name',
+            'history.editedBy.roles:id,name',
+            'addedBy.roles:id,name',
+            'editedBy.roles:id,name'
+        )->find($id);
 
         return response()->json(['data' => $data]);
     }

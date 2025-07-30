@@ -12,10 +12,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasRoles, HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -26,6 +27,10 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'otp',
+        'otp_expires_at',
+        'password_reset_token',
+        'password_reset_expires_at',
     ];
 
     protected $appends = ['name'];
@@ -59,10 +64,10 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function role()
-    {
-        return $this->belongsTo(Role::class)->select('id', 'name');
-    }
+    // public function setCodeAttribute($value)
+    // {
+    //     $this->attributes['employee_code'] = strtoupper($value);
+    // }
 
     public function employee(): HasOne
     {
@@ -104,23 +109,23 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\PensionerDocuments::class);
     }
 
-    function isAdmin()
-    {
-        return $this->role_id === 1;
-    }
+    // function isAdmin()
+    // {
+    //     return $this->roles === 'Admin';
+    // }
 
     function history(): HasMany
     {
-        return $this->hasMany(UniformAllowanceRateClone::class, 'uniform_allowance_id');
+        return $this->hasMany(UserClone::class)->orderBy('created_at', 'DESC');
     }
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 }

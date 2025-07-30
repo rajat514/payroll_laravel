@@ -28,13 +28,19 @@ class EmployeeBankAccountClone extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function employeeBank(): BelongsTo
+    {
+        return $this->belongsTo(EmployeeBankAccount::class, 'employee_bank_account_id');
+    }
+
+
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 }

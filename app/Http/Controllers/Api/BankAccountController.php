@@ -20,7 +20,7 @@ class BankAccountController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = BankAccount::with('pensioner');
+        $query = BankAccount::with('pensioner.employee');
 
         // $query->when(
         //     'pensioner_id',
@@ -29,7 +29,7 @@ class BankAccountController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -51,6 +51,7 @@ class BankAccountController extends Controller
             'pensioner_id' => 'required|exists:pensioner_information,id',
             'bank_name' => 'required|string|max:100',
             'branch_name' => 'required|string|max:100',
+            'is_active' => 'required|in:0,1',
             'account_no' => 'required|string|unique:bank_accounts,account_no',
             'ifsc_code' => 'required|string|max:20|regex:/^[A-Z]{4}0[A-Z0-9]{6}$/',
         ], [
@@ -80,6 +81,10 @@ class BankAccountController extends Controller
 
         try {
             $bank->save();
+
+            if ($bank->is_active) {
+                BankAccount::where('pensioner_id', $bank->pensioner_id)->where('id', '<>', $bank->id)->update(['is_active' => 0]);
+            }
             return response()->json([
                 'successMsg' => 'Bank account detail create successfully!',
                 'data' => $bank
@@ -96,7 +101,7 @@ class BankAccountController extends Controller
      */
     public function show(string $id)
     {
-        $bank = BankAccount::with('history.addedBy', 'history.editedBy')->find($id);
+        $bank = BankAccount::with('pensioner.employee', 'history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         if (!$bank) return response()->json(['errorMsg' => 'Bank account not found!'], 404);
 
@@ -121,11 +126,15 @@ class BankAccountController extends Controller
 
         $old_data = $bank->toArray();
 
-        $bank->is_active === 0 ? $bank->is_active = 1 : $bank->is_active = 0;
+        $bank->is_active = 1;
         $bank->edited_by = auth()->id();
 
         try {
-            $bank->update();
+            $bank->save();
+
+            if ($bank->is_active) {
+                BankAccount::where('pensioner_id', $bank->pensioner_id)->where('id', '<>', $bank->id)->update(['is_active' => 0]);
+            }
 
             $bank->history()->create($old_data);
 
@@ -158,20 +167,9 @@ class BankAccountController extends Controller
             'pensioner_id' => 'required|exists:pensioner_information,id',
             'bank_name' => 'required|string|max:100',
             'branch_name' => 'required|string|max:100',
-            'account_no' => 'required|string',
+            'is_active' => 'required|in:0,1',
+            'account_no' => "required|string|unique:bank_accounts,account_no,$id,id",
             'ifsc_code' => 'required|string|max:20|regex:/^[A-Z]{4}0[A-Z0-9]{6}$/',
-        ], [
-            'pensioner_id.required' => 'Please select a pensioner.',
-            'pensioner_id.exists' => 'Selected pensioner does not exist.',
-            'bank_name.required' => 'Bank name is required.',
-            'bank_name.string' => 'Bank name must be a valid string.',
-            'branch_name.required' => 'Branch name is required.',
-            'branch_name.string' => 'Branch name must be a valid string.',
-            'account_no.required' => 'Account number is required.',
-            'account_no.string' => 'Account number must be a valid string.',
-            'ifsc_code.required' => 'IFSC code is required.',
-            'ifsc_code.string' => 'IFSC code must be a valid string.',
-            'ifsc_code.max' => 'IFSC code should not be longer than 20 characters.',
         ]);
 
         DB::beginTransaction();
@@ -189,9 +187,13 @@ class BankAccountController extends Controller
 
 
         try {
-            $bank->update();
+            $bank->save();
 
             $bank->history()->create($old_data);
+
+            if ($bank->is_active) {
+                BankAccount::where('pensioner_id', $bank->pensioner_id)->where('id', '<>', $bank->id)->update(['is_active' => 0]);
+            }
 
             DB::commit();
             return response()->json([

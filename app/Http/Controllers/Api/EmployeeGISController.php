@@ -25,7 +25,7 @@ class EmployeeGISController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -88,7 +88,7 @@ class EmployeeGISController extends Controller
 
     function show($id)
     {
-        $data = GISEligibility::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = GISEligibility::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }

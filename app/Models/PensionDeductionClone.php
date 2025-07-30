@@ -14,6 +14,7 @@ class PensionDeductionClone extends Model
     protected $fillable = [
         'pension_deduction_id',
         'net_pension_id',
+        'net_pension_clone_id',
         'commutation_amount',
         'income_tax',
         'recovery',
@@ -27,17 +28,22 @@ class PensionDeductionClone extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
 
     public function netPension(): BelongsTo
     {
         return $this->belongsTo(NetPension::class)->select('id', 'pensioner_id', 'net_pension');
+    }
+
+    public function netPensionClone(): BelongsTo
+    {
+        return $this->belongsTo(NetPensionClone::class, 'net_pension_clone_id');
     }
 }

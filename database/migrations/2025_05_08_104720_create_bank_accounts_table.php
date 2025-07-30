@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('pensioner_id')->constrained('pensioner_information');
             $table->string('bank_name', 100);
             $table->string('branch_name', 100);
-            $table->string('account_no', 50)->unique();
+            $table->string('account_no', 50);
             $table->string('ifsc_code', 20);
             $table->boolean('is_active')->default(0);
             $table->foreignId('added_by')->nullable()->constrained('users');

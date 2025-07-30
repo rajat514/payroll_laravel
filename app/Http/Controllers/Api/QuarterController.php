@@ -9,6 +9,17 @@ use Illuminate\Support\Facades\DB;
 
 class QuarterController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
 
     function index()
     {
@@ -16,24 +27,29 @@ class QuarterController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = Quarter::with('addedBy', 'editedBy',);
+        $query = Quarter::with('employeeQuarter.employee', 'addedBy.roles:id,name', 'editedBy.roles:id,name');
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function show($id)
     {
-        $data = Quarter::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = Quarter::with('employeeQuarter.employee', 'history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $request->validate([
             'quarter_no' => 'required|string|max:191',
             'type' => 'required|in:B,C',
@@ -59,6 +75,11 @@ class QuarterController extends Controller
 
     function update(Request $request, $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $quarter = Quarter::find($id);
         if (!$quarter) return response()->json(['errorMsg' => 'Quarter Not Found!'], 404);
 

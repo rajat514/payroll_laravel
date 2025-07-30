@@ -22,13 +22,19 @@ class EmployeeBankController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function show($id)
     {
-        $data = EmployeeBankAccount::with('addedBy', 'editedBy', 'history.editedBy', 'history.addedBy')->find($id);
+        $data = EmployeeBankAccount::with(
+            'history.addedBy.roles:id,name',
+            'history.editedBy.roles:id,name',
+            'history.employeeBank',
+            'addedBy.roles:id,name',
+            'editedBy.roles:id,name'
+        )->find($id);
         return response()->json(['data' => $data]);
     }
 
@@ -41,11 +47,15 @@ class EmployeeBankController extends Controller
 
         $old_data = $employeeBank->toArray();
 
-        $employeeBank->is_active = !$employeeBank->is_active;
+        $employeeBank->is_active = 1;
         $employeeBank->edited_by = auth()->id();
 
         try {
             $employeeBank->save();
+
+            if ($employeeBank->is_active) {
+                EmployeeBankAccount::where('employee_id', $employeeBank->employee_id)->where('id', '<>', $employeeBank->id)->update(['is_active' => 0]);
+            }
 
             $employeeBank->history()->create($old_data);
 
@@ -69,7 +79,7 @@ class EmployeeBankController extends Controller
                     'required',
                     'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'
                 ],
-                'effective_from' => 'required|date',
+                'effective_from' => 'nullable|date',
                 'is_active' => 'boolean|in:1,0',
             ]
         );
@@ -86,6 +96,10 @@ class EmployeeBankController extends Controller
 
         try {
             $employeeBank->save();
+
+            if ($employeeBank->is_active) {
+                EmployeeBankAccount::where('employee_id', $employeeBank->employee_id)->where('id', '<>', $employeeBank->id)->update(['is_active' => 0]);
+            }
 
             return response()->json(['successMsg' => 'Employee Bank Added!', 'data' => $employeeBank]);
         } catch (\Exception $e) {
@@ -106,7 +120,7 @@ class EmployeeBankController extends Controller
                     'required',
                     'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/'
                 ],
-                'effective_from' => 'required|date',
+                'effective_from' => 'nullable|date',
                 'is_active' => 'required|boolean|in:1,0',
             ]
         );
@@ -125,6 +139,10 @@ class EmployeeBankController extends Controller
 
         try {
             $employeeBank->save();
+
+            if ($employeeBank->is_active) {
+                EmployeeBankAccount::where('employee_id', $employeeBank->employee_id)->where('id', '<>', $employeeBank->id)->update(['is_active' => 0]);
+            }
 
             $employeeBank->history()->create($old_data);
 

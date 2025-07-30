@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('pension_deduction_id');
             $table->string('net_pension_id');
+            $table->string('net_pension_clone_id')->nullable();
             $table->float('commutation_amount', 10, 2)->nullable();
             $table->float('income_tax', 10, 2)->nullable();
             $table->float('recovery', 10, 2)->nullable();

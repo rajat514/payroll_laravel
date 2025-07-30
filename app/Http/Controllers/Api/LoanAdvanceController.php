@@ -19,12 +19,12 @@ class LoanAdvanceController extends Controller
 
         $query->when(
             request('employee_id'),
-            fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%')
+            fn($q) => $q->where('employee_id', request('employee_id'))
         );
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -38,9 +38,9 @@ class LoanAdvanceController extends Controller
             'interest_rate' => 'required|numeric',
             'sanctioned_date' => 'required|date',
             'total_installments' => 'required|numeric',
-            'current_installment' => 'required|numeric',
-            'remaining_balance' => 'required|numeric',
-            'is_active' => 'boolean|in:1,0',
+            'current_installment' => 'nullable|numeric',
+            'remaining_balance' => 'nullable|numeric',
+            'is_active' => 'required|in:1,0',
         ]);
 
         $loanAdvance = new LoanAdvance();
@@ -50,8 +50,8 @@ class LoanAdvanceController extends Controller
         $loanAdvance->interest_rate = $request['interest_rate'];
         $loanAdvance->sanctioned_date = $request['sanctioned_date'];
         $loanAdvance->total_installments = $request['total_installments'];
-        $loanAdvance->current_installment = $request['current_installment'];
-        $loanAdvance->remaining_balance = $request['remaining_balance'];
+        $loanAdvance->current_installment = $request['current_installment'] ?? 0;
+        $loanAdvance->remaining_balance = $request['remaining_balance'] ?? $request['loan_amount'];
         $loanAdvance->is_active = $request['is_active'];
         $loanAdvance->added_by = auth()->id();
 
@@ -76,9 +76,9 @@ class LoanAdvanceController extends Controller
             'interest_rate' => 'required|numeric',
             'sanctioned_date' => 'required|date',
             'total_installments' => 'required|numeric',
-            'current_installment' => 'required|numeric',
-            'remaining_balance' => 'required|numeric',
-            'is_active' => 'boolean|in:1,0',
+            'current_installment' => 'nullable|numeric',
+            'remaining_balance' => 'nullable|numeric',
+            'is_active' => 'required|in:1,0',
         ]);
 
         DB::beginTransaction();
@@ -111,7 +111,14 @@ class LoanAdvanceController extends Controller
 
     function show($id)
     {
-        $data = LoanAdvance::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.employee')->find($id);
+        $data = LoanAdvance::with(
+            'employee',
+            'history.addedBy.roles:id,name',
+            'history.editedBy.roles:id,name',
+            'addedBy.roles:id,name',
+            'editedBy.roles:id,name',
+            'history.employee'
+        )->find($id);
 
         return response()->json(['data' => $data]);
     }

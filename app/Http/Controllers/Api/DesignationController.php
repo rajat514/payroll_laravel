@@ -9,21 +9,38 @@ use Illuminate\Support\Facades\DB;
 
 class DesignationController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
-        $data = Designation::all();
+        $data = Designation::orderBy('created_at', 'DESC')->get();
         return response()->json(['data' => $data]);
     }
 
     function show($id)
     {
-        $data = Designation::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = Designation::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $fields = $request->validate([
             'name' => 'required|string|max:191',
             'options' => 'nullable|array',
@@ -42,6 +59,11 @@ class DesignationController extends Controller
 
     function update(Request $request, $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $designation = Designation::find($id);
         if (!$designation) return response()->json(['errorMsg' => 'Designation not found!'], 404);
 

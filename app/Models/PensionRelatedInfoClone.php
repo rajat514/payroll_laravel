@@ -14,14 +14,14 @@ class PensionRelatedInfoClone extends Model
         'pension_rel_info_id',
         'pensioner_id',
         'basic_pension',
-        'commutation_amount',
         'effective_from',
         'effective_till',
-        'is_active',
+        'commutation_amount',
         'additional_pension',
         'medical_allowance',
-        'arrear_id',
+        'arrear_type',
         'total_arrear',
+        'arrear_remarks',
         'remarks',
         'added_by',
         'edited_by',
@@ -29,11 +29,11 @@ class PensionRelatedInfoClone extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 }

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('dearness_relief_id');
             $table->date('effective_from');
-            $table->date('effective_to');
+            $table->date('effective_to')->nullable();
             $table->float('dr_percentage', 5, 2);
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');

@@ -11,6 +11,33 @@ class Deduction extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'net_salary_id',
+        'income_tax',
+        'professional_tax',
+        'license_fee',
+        'nfch_donation',
+        'gpf',
+        'transport_allowance_recovery',
+        'hra_recovery',
+        'computer_advance',
+        'computer_advance_installment',
+        'computer_advance_inst_no',
+        'computer_advance_balance',
+        'employee_contribution_10',
+        'govt_contribution_14_recovery',
+        'dies_non_recovery',
+        'computer_advance_interest',
+        'gis',
+        'pay_recovery',
+        'nps_recovery',
+        'lic',
+        'credit_society',
+        'total_deductions',
+        'added_by',
+        'edited_by',
+    ];
+
     function netSalary(): BelongsTo
     {
         return $this->belongsTo(NetSalary::class);
@@ -18,16 +45,20 @@ class Deduction extends Model
 
     function history(): HasMany
     {
-        return $this->hasMany(DeductionClone::class);
+        return $this->hasMany(DeductionClone::class)->orderBy('created_at', 'DESC');
     }
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
+    }
+    function deductionRecoveries()
+    {
+        return $this->hasMany(DeductionRecoveries::class);
     }
 }

@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class PayCommissionController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director', 'Salary Processing Coordinator (NIOH)', 'Salary Processing Coordinator (ROHC)'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
         $data = PayCommission::with('payMatrixLevel.payMatrixCell')->get();
@@ -18,17 +30,22 @@ class PayCommissionController extends Controller
 
     function show($id)
     {
-        $data = PayCommission::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = PayCommission::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $request->validate([
             'name' => 'required|string|max:191',
             'year' => 'required|numeric|digits:4',
-            'is_active' => 'boolean|in:1,0'
+            'is_active' => 'required|in:1,0'
         ]);
 
         $payCommission = new PayCommission();
@@ -48,13 +65,18 @@ class PayCommissionController extends Controller
 
     function update(Request $request, $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $payCommission = PayCommission::find($id);
         if (!$payCommission) return response()->json(['errorMsg' => 'Pay Commission not found!'], 404);
 
         $request->validate([
             'name' => 'required|string|max:191',
             'year' => 'required|numeric|digits:4',
-            'is_active' => 'boolean|in:1,0'
+            'is_active' => 'required|in:1,0'
         ]);
 
         DB::beginTransaction();

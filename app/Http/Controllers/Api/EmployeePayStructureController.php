@@ -3,12 +3,28 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\EmployeePayStructure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class EmployeePayStructureController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director', 'Pension Operator'];
+    private $can_add_roles = ['IT Admin', 'Director', 'Pension Operator'];
+    private $can_update_roles = ['IT Admin', 'Director', 'Pension Operator'];
+    private $can_view_roles = ['IT Admin', 'Director', 'Pension Operator', ' Administrative Officer'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
         $page = request('page') ? (int)request('page') : 1;
@@ -18,13 +34,29 @@ class EmployeePayStructureController extends Controller
         $query = EmployeePayStructure::with('employee', 'payMatrixCell.payMatrixLevel');
 
         $query->when(
+            $this->user->institute !== 'BOTH',
+            fn($q) => $q->whereHas(
+                'employee',
+                fn($qn) => $qn->where('institute', $this->user->institute)
+            )
+        );
+
+        $query->when(
             request('employee_id'),
-            fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%')
+            fn($q) => $q->where('employee_id', request('employee_id'))
+        );
+
+        $query->when(
+            request('increment_month'),
+            fn($q) => $q->whereHas(
+                'employee',
+                fn($qe) => $qe->where('increment_month', 'LIKE', '%' . request('increment_month') . '%')
+            )
         );
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -32,12 +64,14 @@ class EmployeePayStructureController extends Controller
     function show($id)
     {
         $data = EmployeePayStructure::with(
-            'addedBy',
-            'editedBy',
-            'history.addedBy',
-            'history.editedBy',
+            'history.addedBy.roles:id,name',
+            'history.editedBy.roles:id,name',
+            'addedBy.roles:id,name',
+            'editedBy.roles:id,name',
             'history.employee',
-            'history.PayMatrixCell.payMatrixLevel'
+            'history.PayMatrixCell.payMatrixLevel',
+            'employee',
+            'payMatrixCell.payMatrixLevel'
         )->find($id);
 
         return response()->json(['data' => $data]);
@@ -54,8 +88,18 @@ class EmployeePayStructureController extends Controller
             'order_reference' => 'nullable|max:50'
         ]);
 
-        $isSmallDate = EmployeePayStructure::where('employee_id', $request['employee_id'])->where('effective_from', '>=', $request['effective_from'])->get()->first();
-        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
+        $hasPayStructure = EmployeePayStructure::where('employee_id', $request['employee_id'])->get()->first();
+        if ($hasPayStructure) {
+            return response()->json(['errorMsg' => 'This employee pay structure already added!'], 400);
+        }
+
+        $employee = Employee::find($request['employee_id']);
+        if (!$employee) {
+            return response()->json(['errorMsg' => 'Employee not found!'], 404);
+        }
+        if ($employee->date_of_joining > $request['effective_from']) {
+            return response()->json(['errorMsg' => 'Effective from date is smaller than the date of joining of employee!',], 400);
+        }
 
         $payStructure = new EmployeePayStructure();
         $payStructure->employee_id = $request['employee_id'];
@@ -87,9 +131,6 @@ class EmployeePayStructureController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'order_reference' => 'nullable|max:50'
         ]);
-
-        $isSmallDate = EmployeePayStructure::where('effective_from', '>', $request['effective_from'])->get()->first();
-        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

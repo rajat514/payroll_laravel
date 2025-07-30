@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class DearnessReliefController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -23,7 +35,7 @@ class DearnessReliefController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -41,15 +53,35 @@ class DearnessReliefController extends Controller
      */
     public function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $request->validate([
             'effective_from' => 'required|date',
-            'effective_to' => 'required|date|after:effective_from',
+            'effective_to' => 'nullable|date|after:effective_from',
             'dr_percentage' => 'required|numeric'
         ]);
 
         $isSmallDate = DearnessRelief::where('effective_from', '>=', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
+        $dearness = DearnessRelief::get()->last();
+
+        DB::beginTransaction();
+
+        if ($dearness) {
+            $dearness->effective_to = \Carbon\Carbon::parse($request['effective_from'])->subDay()->format('Y-m-d');
+
+            try {
+                $dearness->save();
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json(['errorMsg' => $e->getMessage()], 500);
+            }
+        }
 
         $data = new DearnessRelief();
         $data->effective_from = $request['effective_from'];
@@ -59,14 +91,11 @@ class DearnessReliefController extends Controller
 
         try {
             $data->save();
-            return response()->json([
-                'successMsg' => 'Dearness relief create successfully',
-                'data' => $data
-            ], 200);
+            DB::commit();
+            return response()->json(['successMsg' => 'Dearness relief create successfully', 'data' => $data], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'errorMsg' => $e->getMessage()
-            ], 500);
+            DB::rollBack();
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 
@@ -75,7 +104,7 @@ class DearnessReliefController extends Controller
      */
     public function show($id)
     {
-        $data = DearnessRelief::with('addedBy', 'editedBy', 'history.editedBy', 'history.addedBy')->find($id);
+        $data = DearnessRelief::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }
@@ -87,19 +116,20 @@ class DearnessReliefController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $data = DearnessRelief::find($id);
 
         if (!$data) return response()->json(['errorMsg' => 'Dearness relief not found!'], 404);
 
         $request->validate([
             'effective_from' => 'required|date',
-            'effective_to' => 'required|date|after:effective_from',
+            'effective_to' => 'nullable|date|after:effective_from',
             'dr_percentage' => 'required|numeric'
         ]);
-
-        $isSmallDate = DearnessRelief::where('effective_from', '>', $request['effective_from'])->get()->first();
-        // return response()->json(['successMsg' => 'Dearness relief update successfully', 'data' => $isSmallDate], 200);
-        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
         DB::beginTransaction();
 

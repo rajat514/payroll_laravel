@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('employee_statuses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained();
+            $table->foreignId('employee_id')->nullable()->constrained();
             $table->enum('status', ['Active', 'Suspended', 'Resigned', 'Retired', 'On Leave'])->default('Active');
-            $table->date('effective_from');
+            $table->date('effective_from')->nullable();
             $table->date('effective_till')->nullable();
             $table->string('remarks')->nullable();
             $table->string('order_reference')->nullable();

@@ -13,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class User extends Authenticatable
+class UserClone extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -33,7 +33,10 @@ class User extends Authenticatable
         'email_verified_at',
         'institute',
         'is_active',
+        'is_retired',
         'password',
+        'added_by',
+        'edited_by'
     ];
 
     protected $appends = ['name'];
@@ -67,10 +70,10 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function role()
-    {
-        return $this->belongsTo(Role::class)->select('id', 'name');
-    }
+    // public function role()
+    // {
+    //     return $this->belongsTo(Role::class)->select('id', 'name');
+    // }
 
     public function employee(): HasOne
     {
@@ -119,11 +122,11 @@ class User extends Authenticatable
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 }

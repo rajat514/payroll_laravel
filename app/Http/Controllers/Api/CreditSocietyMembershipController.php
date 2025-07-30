@@ -5,9 +5,22 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CreditSocietyMembership;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CreditSocietyMembershipController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
         $page = request('page') ? (int)request('page') : 1;
@@ -18,18 +31,23 @@ class CreditSocietyMembershipController extends Controller
 
         $query->when(
             request('employee_id'),
-            fn($q) => $q->where('employee_id', 'LIKE', '%' . request('employee_id') . '%')
+            fn($q) => $q->where('employee_id', request('employee_id'))
         );
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $request->validate([
             'employee_id' => 'required|numeric|exists:employees,id',
             'society_name' => 'required|string',
@@ -43,6 +61,21 @@ class CreditSocietyMembershipController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'remark' => 'nullable|string|max:255'
         ]);
+
+        $employeeCredit = CreditSocietyMembership::where('employee_id', $request['employee_id'])->get()->last();
+
+        DB::beginTransaction();
+        if ($employeeCredit) {
+            $employeeCredit->effective_till = \Carbon\Carbon::parse($request['effective_from'])->subDay()->format('Y-m-d');
+
+            try {
+                $employeeCredit->save();
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json(['errorMsg' => $e->getMessage()], 500);
+            }
+        }
 
         $creditSocietyMembership = new CreditSocietyMembership();
         $creditSocietyMembership->employee_id = $request['employee_id'];
@@ -60,15 +93,21 @@ class CreditSocietyMembershipController extends Controller
 
         try {
             $creditSocietyMembership->save();
-
+            db::commit();
             return response()->json(['successMsg' => 'Credit Society Membership Created!', 'data' => $creditSocietyMembership]);
         } catch (\Exception $e) {
+            db::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 
     function update(Request $request, $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $creditSocietyMembership = CreditSocietyMembership::find($id);
         if (!$creditSocietyMembership) return response()->json(['errorMsg' => 'Credit Society Membership not found!'], 404);
 

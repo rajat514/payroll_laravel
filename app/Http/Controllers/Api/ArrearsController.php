@@ -18,16 +18,16 @@ class ArrearsController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = Arrears::with('addedBy.role', 'editedBy.role', 'pensioner.employee');
+        $query = Arrears::with('addedBy.roles', 'editedBy.roles', 'pensioner.employee');
 
         $query->when(
             'pensioner_id',
-            fn($q) => $q->where('pensioner_id', 'LIKE', '%' . request('pensioner_id') . '%')
+            fn($q) => $q->where('pensioner_id', request('pensioner_id'))
         );
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -91,7 +91,7 @@ class ArrearsController extends Controller
      */
     public function show($id)
     {
-        $data = Arrears::with('history.addedBy', 'history.editedBy', 'pensioner', 'history.pensioner')->find($id);
+        $data = Arrears::with('history.addedBy.roles', 'history.editedBy.roles', 'pensioner.employee', 'history.pensioner')->find($id);
 
         return response()->json(['data' => $data]);
     }

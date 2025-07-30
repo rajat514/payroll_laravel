@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::create('employee_bank_account_clones', function (Blueprint $table) {
             $table->id();
             $table->string('employee_bank_account_id');
-            $table->string('employee_id');
-            $table->string('bank_name');
-            $table->string('branch_name');
-            $table->string('account_number');
-            $table->string('ifsc_code');
-            $table->date('effective_from');
+            $table->string('employee_id')->nullable();
+            $table->string('bank_name')->nullable();
+            $table->string('branch_name')->nullable();
+            $table->string('account_number')->nullable();
+            $table->string('ifsc_code')->nullable();
+            $table->date('effective_from')->nullable();
             $table->boolean('is_active')->default(1);
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');

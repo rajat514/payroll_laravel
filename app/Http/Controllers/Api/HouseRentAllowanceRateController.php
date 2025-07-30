@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class HouseRentAllowanceRateController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
         $page = request('page') ? (int)request('page') : 1;
@@ -19,13 +31,18 @@ class HouseRentAllowanceRateController extends Controller
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
     function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $request->validate([
             'city_class' => 'required|in:X,Y,Z',
             'rate_percentage' => 'required|numeric',
@@ -37,6 +54,22 @@ class HouseRentAllowanceRateController extends Controller
         $isSmallDate = HouseRentAllowanceRate::where('effective_from', '>=', $request['effective_from'])->get()->first();
         if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
 
+        $hra = HouseRentAllowanceRate::where('city_class', $request['city_class'])->get()->last();
+
+        DB::beginTransaction();
+
+        if ($hra) {
+            $hra->effective_till = \Carbon\Carbon::parse($request['effective_from'])->subDay()->format('Y-m-d');
+
+            try {
+                $hra->save();
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json(['errorMsg' => $e->getMessage()], 500);
+            }
+        }
+
         $houseRentAllowance = new HouseRentAllowanceRate();
         $houseRentAllowance->city_class = $request['city_class'];
         $houseRentAllowance->rate_percentage = $request['rate_percentage'];
@@ -47,15 +80,21 @@ class HouseRentAllowanceRateController extends Controller
 
         try {
             $houseRentAllowance->save();
-
+            DB::commit();
             return response()->json(['successMsg' => 'House Rent Allowance Rate Created!', 'data' => $houseRentAllowance]);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }
     }
 
     function update(Request $request, $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $houseRentAllowance = HouseRentAllowanceRate::find($id);
         if (!$houseRentAllowance) return response()->json(['errorMsg' => 'House Rent Allowance Rate not found!'], 404);
 
@@ -66,10 +105,6 @@ class HouseRentAllowanceRateController extends Controller
             'effective_till' => 'nullable|date|after:effective_from',
             'notification_ref' => 'nullable|string'
         ]);
-
-        $isSmallDate = HouseRentAllowanceRate::where('effective_from', '>', $request['effective_from'])->get()->first();
-        if ($isSmallDate) return response()->json(['errorMsg' => 'Effective From date is smaller than previous!'], 400);
-
 
         DB::beginTransaction();
 
@@ -97,7 +132,7 @@ class HouseRentAllowanceRateController extends Controller
 
     function show($id)
     {
-        $data = HouseRentAllowanceRate::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy')->find($id);
+        $data = HouseRentAllowanceRate::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name')->find($id);
 
         return response()->json(['data' => $data]);
     }

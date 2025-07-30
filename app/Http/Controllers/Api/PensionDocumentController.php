@@ -9,20 +9,39 @@ use Illuminate\Support\Facades\DB;
 
 class PensionDocumentController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director', 'Pensioners Operator'];
+    private $can_add_roles = ['IT Admin', 'Director', 'Pensioners Operator'];
+    private $can_update_roles = ['IT Admin', 'Director', 'Pensioners Operator'];
+    private $can_view_roles = ['IT Admin', 'Director', 'Pensioners Operator', 'Administrative Officer'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
+        if (!$this->user->hasAnyRole($this->can_view_roles)) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
         $page = request('page') ? (int)request('page') : 1;
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PensionerDocuments::with('pensioner.employee', 'addedBy.role', 'editedBy.role');
+        $query = PensionerDocuments::with('pensioner.employee',  'addedBy.roles:id,name', 'editedBy.roles:id,name');
 
         $total_count = $query->count();
 
-        $data = $query->offset($offset)->limit($limit)->get();
+        $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
 
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
@@ -40,6 +59,10 @@ class PensionDocumentController extends Controller
      */
     public function store(Request $request)
     {
+        if (!$this->user->hasAnyRole($this->can_add_roles)) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
         $fileName = '';
         $request->validate([
             'pensioner_id' => 'required|exists:pensioner_information,id',
@@ -79,7 +102,11 @@ class PensionDocumentController extends Controller
      */
     public function show(string $id)
     {
-        $data = PensionerDocuments::with('addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'pensioner.employee')->find($id);
+        if (!$this->user->hasAnyRole($this->can_view_roles)) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
+        $data = PensionerDocuments::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'pensioner.employee')->find($id);
 
         return response()->json(['data' => $data]);
     }
@@ -97,6 +124,10 @@ class PensionDocumentController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if (!$this->user->hasAnyRole($this->can_update_roles)) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
         $data = PensionerDocuments::find($id);
         if (!$data) return response()->json([
             'errorMsg' => 'Pensioner Document not found!'

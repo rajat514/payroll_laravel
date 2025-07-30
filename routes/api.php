@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\ExportController;
+use App\Models\NetSalary;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,7 +19,20 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('login', [\App\Http\Controllers\Api\UserController::class, 'login']);
 
+// Forgot Password Routes (Public routes - no authentication required)
+Route::post('forgot-password', [\App\Http\Controllers\Api\UserController::class, 'forgotPassword']);
+Route::post('verify-otp', [\App\Http\Controllers\Api\UserController::class, 'verifyOtp']);
+Route::post('reset-password', [\App\Http\Controllers\Api\UserController::class, 'resetPassword']);
+Route::post('resend-otp', [\App\Http\Controllers\Api\UserController::class, 'resendOtp']);
+
+// Test email route (for debugging)
+Route::post('test-email', [\App\Http\Controllers\Api\UserController::class, 'testEmail']);
+
+Route::get('export/multi-sheet', [ExportController::class, 'exportMultiSheet']);
+Route::get('export/employee-sheet', [ExportController::class, 'exportEmployeeSheet']);
+Route::get('export/pensioner-sheet', [ExportController::class, 'exportPensionerSheet']);
 Route::group(['middleware' => 'auth:sanctum'], function () {
+
 
     Route::apiResource('/role', \App\Http\Controllers\Api\RoleController::class)->only('index', 'store', 'update');
 
@@ -31,6 +46,9 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/user', [\App\Http\Controllers\Api\UserController::class, 'store']);
 
     Route::post('/user/{id}', [\App\Http\Controllers\Api\UserController::class, 'update']);
+    Route::post('/user/change-password/{id}', [\App\Http\Controllers\Api\UserController::class, 'changePassword']);
+    Route::post('/user/assign-roles/{id}', [\App\Http\Controllers\Api\UserController::class, 'assignRoles']);
+    Route::post('/user/remove-roles/{id}', [\App\Http\Controllers\Api\UserController::class, 'removeRoles']);
 
     // Route::get('/quarters', [\App\Http\Controllers\Api\QuarterController::class, 'index']);
     // Route::post('/quarters', [\App\Http\Controllers\Api\QuarterController::class, 'store']);
@@ -82,6 +100,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('employee-loan', \App\Http\Controllers\Api\LoanAdvanceController::class)->except(['destroy,show']);
 
     Route::apiResource('salary', \App\Http\Controllers\Api\NetSalaryController::class)->except(['destroy']);
+    Route::get('view-salary', [\App\Http\Controllers\Api\NetSalaryController::class, 'viewOwnSalary']);
     Route::post('verify-salary', [\App\Http\Controllers\Api\NetSalaryController::class, 'verifySalary']);
 
     Route::apiResource('monthly-pension', \App\Http\Controllers\Api\MonthlyPensionController::class)->only('index', 'store', 'update', 'show');
@@ -106,10 +125,37 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::apiResource('net-pension', \App\Http\Controllers\Api\NetPensionController::class)->only('index', 'update', 'show');
     Route::post('bulk-pensions', [\App\Http\Controllers\Api\MonthlyPensionController::class, 'bulkPension']);
-
-    Route::get('report', [\App\Http\Controllers\Api\ReportController::class, 'index']);
+    Route::post('verify-pension', [\App\Http\Controllers\Api\NetPensionController::class, 'verifyPension']);
 
     Route::apiResource('pay-commission', \App\Http\Controllers\Api\PayCommissionController::class)->only('index', 'update', 'store', 'show');
+
+    Route::apiResource('nps-govt-contribution', \App\Http\Controllers\Api\NPSGovtContributionController::class)->only(['index', 'store', 'update', 'show']);
+
+    Route::apiResource('gpf-contribution', \App\Http\Controllers\Api\GPFContributionController::class)->only(['index', 'store', 'update', 'show']);
+
+    Route::get('report-all', [\App\Http\Controllers\Api\ReportController::class, 'index']);
+    Route::get('report-bank-statement', [\App\Http\Controllers\Api\ReportController::class, 'bankStatement']);
+    Route::get('report-lic', [\App\Http\Controllers\Api\ReportController::class, 'lic']);
+    Route::get('report-gis', [\App\Http\Controllers\Api\ReportController::class, 'gis']);
+    Route::get('report-nps', [\App\Http\Controllers\Api\ReportController::class, 'newPensionScheme']);
+    Route::get('all-data', [\App\Http\Controllers\Api\ReportController::class, 'allData']);
+
+    Route::get('dashboard', [\App\Http\Controllers\Api\ReportController::class, 'dashBoardCount']);
+    Route::get('dashboard-reports', [\App\Http\Controllers\Api\ReportController::class, 'dashBoardreports']);
+    Route::get('test', function () {
+        $data = NetSalary::with([
+            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+            'employeeBank:id,employee_id,account_number',
+            'employee.latestEmployeeDesignation:id,employee_id,designation',
+            'paySlip.salaryArrears',
+            'deduction.deductionRecoveries',
+        ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+        // $salaryArrearTypes = $data->flatMap(fn($item) => optional($item->paySlip)->salaryArrears->pluck('type'))->unique()->values()->all();
+        // $deductionRecoveryTypes = $data->flatMap(fn($item) => optional($item->deduction)->deductionRecoveries->pluck('type'))->unique()->values()->all();
+        // return response()->json([$salaryArrearTypes, $deductionRecoveryTypes]);
+        return response()->json([$data]);
+    });
 });
 
 // Route::middleware('auth:sanctum')->get('/user', function (Request $request) {

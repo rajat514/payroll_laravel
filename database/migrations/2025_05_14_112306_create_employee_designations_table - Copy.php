@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('employee_designation_clones', function (Blueprint $table) {
             $table->id();
             $table->string('employee_designation_id');
-            $table->string('employee_id');
-            $table->string('designation');
-            $table->string('cadre');
-            $table->enum('job_group', ['A', 'B', 'C', 'D']);
-            $table->date('effective_from');
+            $table->string('employee_id')->nullable();
+            $table->string('designation')->nullable();
+            $table->string('cadre')->nullable();
+            $table->enum('job_group', ['A', 'B', 'C', 'D'])->nullable();
+            $table->date('effective_from')->nullable();
             $table->date('effective_till')->nullable();
             $table->string('promotion_order_no')->nullable();
             $table->foreignId('added_by')->nullable()->constrained('users');

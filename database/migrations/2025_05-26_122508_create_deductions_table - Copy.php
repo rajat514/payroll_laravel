@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('deduction_id');
             $table->string('net_salary_id');
+            $table->string('net_salary_clone_id')->nullable();
             $table->float('income_tax', 10, 2)->nullable();
             $table->float('professional_tax', 10, 2)->nullable();
             $table->float('license_fee', 10, 2)->nullable();

@@ -19,7 +19,7 @@ class PayMatrixLevel extends Model
 
     public function history(): HasMany
     {
-        return $this->hasMany(PayMatrixLevelClone::class);
+        return $this->hasMany(PayMatrixLevelClone::class)->orderBy('created_at', 'DESC');
     }
 
     public function payCommission(): BelongsTo
@@ -30,11 +30,11 @@ class PayMatrixLevel extends Model
     function addedBy(): BelongsTo
 
     {
-        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 }

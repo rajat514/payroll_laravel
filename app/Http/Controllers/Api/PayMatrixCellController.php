@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class PayMatrixCellController extends Controller
 {
+    private \App\Models\User $user;
+
+    private $all_permission_roles = ['IT Admin', 'Director', 'Salary Processing Coordinator (NIOH)', 'Salary Processing Coordinator (ROHC)'];
+
+    function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            $this->user = \App\Models\User::find(auth()->id());
+            return $next($request);
+        });
+    }
+
     function index()
     {
         // $page = request('page') ? (int)request('page') : 1;
@@ -19,7 +31,7 @@ class PayMatrixCellController extends Controller
 
         $query->when(
             request('matrix_level_id'),
-            fn($q) => $q->where('matrix_level_id', 'LIKE', '%' . request('matrix_level_id') . '%')
+            fn($q) => $q->where('matrix_level_id', request('matrix_level_id'))
         );
         $total_count = $query->count();
 
@@ -30,13 +42,18 @@ class PayMatrixCellController extends Controller
 
     function show($id)
     {
-        $data = PayMatrixCell::with('payMatrixLevel', 'addedBy', 'editedBy', 'history.addedBy', 'history.editedBy', 'history.payMatrixLevel')->find($id);
+        $data = PayMatrixCell::with('payMatrixLevel', 'history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'history.payMatrixLevel')->find($id);
 
         return response()->json(['data' => $data]);
     }
 
     function store(Request $request)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $request->validate([
             'matrix_level_id' => 'required|numeric|exists:pay_matrix_levels,id',
             'index' => ['required', 'numeric', 'regex:/^\d{1,2}$/'],
@@ -60,6 +77,11 @@ class PayMatrixCellController extends Controller
 
     function update(Request $request, $id)
     {
+        // Check if user has required roles
+        if (!$this->user->hasAnyRole($this->all_permission_roles)) {
+            return response()->json(['errorMsg' => 'Access Denied! Only IT Admin and Director can perform this action.'], 403);
+        }
+
         $payMatrixCell = PayMatrixCell::find($id);
         if (!$payMatrixCell) return response()->json(['errorMsg' => 'Pay Matrix Cell not found!']);
 

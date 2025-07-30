@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('employee_designations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('employee_id')->constrained();
-            $table->string('designation');
-            $table->string('cadre');
-            $table->enum('job_group', ['A', 'B', 'C', 'D']);
-            $table->date('effective_from');
+            $table->foreignId('employee_id')->nullable()->constrained();
+            $table->string('designation')->nullable();
+            $table->string('cadre')->nullable();
+            $table->enum('job_group', ['A', 'B', 'C', 'D'])->nullable();
+            $table->date('effective_from')->nullable();
             $table->date('effective_till')->nullable();
             $table->string('promotion_order_no')->nullable();
             $table->foreignId('added_by')->nullable()->constrained('users');

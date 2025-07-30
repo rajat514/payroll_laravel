@@ -15,6 +15,7 @@ class MonthlyPensionClone extends Model
         'monthly_pension_id',
         'pension_rel_info_id',
         'net_pension_id',
+        'net_pension_clone_id',
         'basic_pension',
         'additional_pension',
         'dr_id',
@@ -30,12 +31,12 @@ class MonthlyPensionClone extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function pensioner(): BelongsTo
@@ -56,5 +57,10 @@ class MonthlyPensionClone extends Model
     public function netPension(): BelongsTo
     {
         return $this->belongsTo(NetPension::class)->select('id', 'net_pension', 'pensioner_id');
+    }
+
+    public function netPensionClone(): BelongsTo
+    {
+        return $this->belongsTo(NetPensionClone::class, 'net_pension_clone_id');
     }
 }

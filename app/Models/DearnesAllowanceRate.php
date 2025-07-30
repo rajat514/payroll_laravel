@@ -13,16 +13,16 @@ class DearnesAllowanceRate extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     function history(): HasMany
     {
-        return $this->hasMany(DearnesAllowanceRateClone::class);
+        return $this->hasMany(DearnesAllowanceRateClone::class)->orderBy('created_at', 'DESC');
     }
 }

@@ -13,6 +13,7 @@ class DeductionClone extends Model
     protected $fillable = [
         'deduction_id',
         'net_salary_id',
+        'net_salary_clone_id',
         'income_tax',
         'professional_tax',
         'license_fee',
@@ -45,11 +46,21 @@ class DeductionClone extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
+    }
+
+    public function netSalaryClone()
+    {
+        return $this->belongsTo(NetSalaryClone::class, 'net_salary_clone_id');
+    }
+
+    public function deductionRecoveries()
+    {
+        return $this->hasMany(DeductionRecoveryClones::class);
     }
 }

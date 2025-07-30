@@ -13,6 +13,7 @@ class PaySlipClone extends Model
     protected $fillable = [
         'pay_slip_id',
         'net_salary_id',
+        'net_salary_clone_id',
         'pay_structure_id',
         'basic_pay',
         'da_rate_id',
@@ -41,12 +42,12 @@ class PaySlipClone extends Model
     function addedBy(): BelongsTo
 
     {
-        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'added_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     function editedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(User::class, 'edited_by', 'id')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     function netSalary(): BelongsTo
@@ -57,5 +58,15 @@ class PaySlipClone extends Model
     function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
+    }
+
+    public function netSalaryClone()
+    {
+        return $this->belongsTo(NetSalaryClone::class, 'net_salary_clone_id');
+    }
+
+    public function salaryArrears()
+    {
+        return $this->hasMany(SalaryArrearClone::class, 'pay_slip_clone_id', 'id');
     }
 }

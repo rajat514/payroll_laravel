@@ -16,14 +16,13 @@ return new class extends Migration
             $table->string('pension_rel_info_id');
             $table->string('pensioner_id');
             $table->float('basic_pension', 10, 2);
-            $table->float('commutation_amount', 10, 2);
-            $table->date('effective_from');
-            $table->date('effective_till')->nullable();
+            $table->float('commutation_amount', 10, 2)->nullable();
             $table->boolean('is_active')->default(1);
             $table->float('additional_pension', 10, 2)->nullable();
             $table->float('medical_allowance', 10, 2)->nullable(); // Medical allowance
-            $table->foreignId('arrear_id')->nullable()->constrained('arrears');
+            $table->string('arrear_type')->nullable();
             $table->float('total_arrear', 10, 2)->nullable();
+            $table->string('arrear_remarks')->nullable();
             $table->string('remarks', 255)->nullable();  //  Remarks (expiry or other notes)
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');

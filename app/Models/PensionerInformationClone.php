@@ -18,6 +18,7 @@ class PensionerInformationClone extends Model
         'first_name',
         'type_of_pension',
         'retired_employee_id',
+        'user_id',
         'relation',
         'dob',
         'doj',
@@ -60,17 +61,17 @@ class PensionerInformationClone extends Model
 
     public function addedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'added_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function editedBy(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name', 'role_id');
+        return $this->belongsTo(\App\Models\User::class, 'edited_by')->select('id', 'first_name', 'middle_name', 'last_name');
     }
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(Employee::class, 'retired_employee_id')->select('id', 'first_name', 'last_name', 'date_of_birth', 'date_of_joining', 'date_of_retirement');
+        return $this->belongsTo(Employee::class, 'retired_employee_id')->select('id', 'first_name', 'middle_name', 'employee_code', 'last_name', 'date_of_birth', 'date_of_joining', 'date_of_retirement');
     }
 
     public function bankAccount(): HasOne
