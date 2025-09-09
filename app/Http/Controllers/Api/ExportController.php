@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Exports\MultiSheetExport;
+use App\Exports\NetPensionSheet;
+use App\Exports\PensionerIncomeTaxExport;
+use App\Exports\PensionerMultiSheetExport;
 use App\Exports\SelectedEmployeesSheet;
 use App\Exports\SelectedPensionerSheet;
 use App\Http\Controllers\Controller;
@@ -22,6 +25,16 @@ class ExportController extends Controller
         return Excel::download(new MultiSheetExport($filters), 'Data_of_' . $previousMonth . '_' . $previousMonthYear . '.xlsx');
     }
 
+    public function exportAllPensionSheet(Request $request)
+    {
+        $now = Carbon::now();
+        $previousMonth = $now->copy()->subMonth()->month;       // e.g., 6 for June
+        $previousMonthYear = $now->copy()->subMonth()->year;
+        $filters = $request->only(['start_month', 'start_year', 'end_month', 'end_year']);
+
+        return Excel::download(new NetPensionSheet($filters), 'Data_of_' . $previousMonth . '_' . $previousMonthYear . '.xlsx');
+    }
+
     public function exportEmployeeSheet(Request $request)
     {
         $now = Carbon::now();
@@ -39,6 +52,6 @@ class ExportController extends Controller
         $previousMonthYear = $now->copy()->subMonth()->year;
         $filters = $request->only(['start_month', 'start_year', 'end_month', 'end_year', 'pensioner_id']);
 
-        return Excel::download(new SelectedPensionerSheet($filters), 'Data_of_' . $previousMonth . '_' . $previousMonthYear . '.xlsx');
+        return Excel::download(new PensionerMultiSheetExport($filters), 'Data_of_' . $previousMonth . '_' . $previousMonthYear . '.xlsx');
     }
 }

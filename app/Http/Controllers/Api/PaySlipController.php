@@ -25,6 +25,7 @@ use App\Models\Quarter;
 use App\Models\SalaryArrearClone;
 use App\Models\SalaryArrears;
 use App\Models\UniformAllowanceRate;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -82,7 +83,7 @@ class PaySlipController extends Controller
         $employee_contribution_10 = 0;
         $gisAmount = 0;
         $license_fee = 0;
-
+        // return response()->json($request->all());
         $request->validate([
             'employee_id' => 'required|numeric|exists:employees,id',
             'month' => 'required|numeric|max:12|min:1',
@@ -90,19 +91,29 @@ class PaySlipController extends Controller
             'processing_date' => 'required|date',
             'payment_date' => 'nullable|date',
             'employee_bank_id' => 'required|numeric|exists:employee_bank_accounts,id',
+            'net_amount' => 'required|numeric',
+            'remarks' => 'nullable|string',
 
             'net_salary_id' => 'nullable|numeric|exists:net_salaries,id',
             'pay_structure_id' => 'required|numeric|exists:employee_pay_structures,id',
+            'basic_pay' => 'required|numeric',
             'da_rate_id' => 'required|numeric|exists:dearnes_allowance_rates,id',
+            'da_amount' => 'required|numeric',
             'hra_rate_id' => 'nullable|numeric|exists:house_rent_allowance_rates,id',
+            'hra_amount' => 'nullable|numeric',
             'npa_rate_id' => 'nullable|numeric|exists:non_practicing_allowance_rates,id',
-            'transport_rate_id' => 'nullable|numeric|exists:transport_allowance_rates,id',
+            'npa_amount' => 'nullable|numeric',
+            'transport_rate_id' => 'nullable|numeric|exists:employee_transport_allowances,id',
+            'transport_amount' => 'nullable|numeric',
             'uniform_rate_id' => 'nullable|numeric|exists:uniform_allowance_rates,id',
+            'uniform_rate_amount' => 'nullable|numeric',
+            'da_on_ta' => 'nullable|numeric',
             'arrears' => 'nullable|numeric',
             'spacial_pay' => 'nullable|numeric',
             'da_1' => 'nullable|numeric',
             'da_2' => 'nullable|numeric',
             'itc_leave_salary' => 'nullable|numeric',
+            'total_pay' => 'required|numeric',
 
             'income_tax' => 'nullable|numeric|',
             'professional_tax' => 'nullable|numeric',
@@ -110,6 +121,7 @@ class PaySlipController extends Controller
             'gpf' => 'nullable|numeric',
             'transport_allowance_recovery' => 'nullable|numeric',
             'hra_recovery' => 'nullable|numeric',
+            'license_fee' => 'nullable|numeric',
             'computer_advance_installment' => 'nullable|numeric',
             'computer_advance_balance' => 'nullable|numeric',
             'employee_contribution_10' => 'nullable|numeric',
@@ -120,6 +132,8 @@ class PaySlipController extends Controller
             'nps_recovery' => 'nullable|numeric',
             'lic' => 'nullable|numeric',
             'credit_society_membership' => 'nullable|numeric',
+            'total_deductions' => 'nullable|numeric',
+            'gis' => 'nullable|numeric',
 
             'salary_arrears' => 'nullable|array',
             'salary_arrears.*.type' => 'required_with:salary_arrears|string',
@@ -130,107 +144,113 @@ class PaySlipController extends Controller
             'deduction_recoveries.*.amount' => 'required_with:deduction_recoveries|numeric|min:0',
         ]);
 
-        $old_net_salary = NetSalary::where('employee_id', $request['employee_id'])->where('month', $request['month'])->where('year', $request['year'])->get()->first();
-        if ($old_net_salary) return response()->json(['errorMsg' => 'This month salary is already generated!'], 400);
+        // $old_net_salary = NetSalary::where('employee_id', $request['employee_id'])->where('month', $request['month'])->where('year', $request['year'])->get()->first();
+        // if ($old_net_salary) return response()->json(['errorMsg' => 'This month salary is already generated!'], 400);
 
-        $employee = Employee::find($request['employee_id']);
+        $employee = Employee::with(
+            'employeeDesignation',
+            'employeeStatus',
+            'employeePayStructure.PayMatrixCell.payMatrixLevel',
+            'employeeBank',
+            'latestEmployeeDesignation'
+        )->find($request['employee_id']);
         if (!$employee) return response()->json(['errorMsg' => 'Employee not found!'], 404);
 
-        $employeeStatus = EmployeeStatus::where('employee_id', $employee->id)->orderBy('effective_from', 'DESC')->get()->first();
-        if ($employeeStatus->status === 'Retired') {
-            return response()->json(['errorMsg' => "This employee is retired!"], 400);
-        }
+        // $employeeStatus = EmployeeStatus::where('employee_id', $employee->id)->orderBy('effective_from', 'DESC')->get()->first();
+        // if ($employeeStatus->status === 'Retired') {
+        //     return response()->json(['errorMsg' => "This employee is retired!"], 400);
+        // }
 
         $employeeBank = EmployeeBankAccount::find($request['employee_bank_id']);
-        if (!$employeeBank || $employeeBank->employee_id != $employee->id) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
-        if (!$employeeBank->is_active) return response()->json(['errorMsg' => 'Please fill the correct Bank'], 400);
+        // if (!$employeeBank || $employeeBank->employee_id != $employee->id) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
+        // if (!$employeeBank->is_active) return response()->json(['errorMsg' => 'Please fill the correct Bank'], 400);
 
-        $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($request['pay_structure_id']);
-        if (!$employeePayStructure) {
-            return response()->json(['errorMsg' => 'Employee Pay Structure not found!'], 404);
-        }
-        $employeePayCell = $employeePayStructure->payMatrixCell;
-        $employeePayLevel = $employeePayStructure->payMatrixCell->payMatrixLevel;
-        $basicPay = $employeePayStructure->PayMatrixCell->amount;  // Basic Pay
+        // $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($request['pay_structure_id']);
+        // if (!$employeePayStructure) {
+        //     return response()->json(['errorMsg' => 'Employee Pay Structure not found!'], 404);
+        // }
+        // $employeePayCell = $employeePayStructure->payMatrixCell;
+        // $employeePayLevel = $employeePayStructure->payMatrixCell->payMatrixLevel;
+        // $basicPay = $employeePayStructure->PayMatrixCell->amount;  // Basic Pay
 
-        $taRate = EmployeeTransportAllowance::where('pay_matrix_level', $employeePayLevel->name)->first();
-        if (!$taRate) {
-            return response()->json(['errorMsg' => 'Transport Allowance not found!'], 404);
-        }
+        // $taRate = EmployeeTransportAllowance::where('pay_matrix_level', $employeePayLevel->name)->first();
+        // if (!$taRate) {
+        //     return response()->json(['errorMsg' => 'Transport Allowance not found!'], 404);
+        // }
 
-        if ($employee->npa_eligibility) {
-            $nonPracticingAllowance = NonPracticingAllowanceRate::find($request['npa_rate_id']);
-            if (!$nonPracticingAllowance) {
-                return response()->json(['errorMsg' => 'Non Practicing Allowance not found!'], 404);
-            }
-            $npaAmount += $basicPay * ($nonPracticingAllowance->rate_percentage / 100);
-        }
+        // if ($employee->npa_eligibility) {
+        //     $nonPracticingAllowance = NonPracticingAllowanceRate::find($request['npa_rate_id']);
+        //     if (!$nonPracticingAllowance) {
+        //         return response()->json(['errorMsg' => 'Non Practicing Allowance not found!'], 404);
+        //     }
+        //     $npaAmount += $basicPay * ($nonPracticingAllowance->rate_percentage / 100);
+        // }
 
-        if ($basicPay > 237500) {
-            $payPlusNpa = $basicPay;
-            $npaAmount = 0;
-        } else {
-            $payPlusNpa = $basicPay + $npaAmount;
-            if ($payPlusNpa > 237500) {
-                $payPlusNpa = 237500;
-                $npaAmount = $payPlusNpa - $basicPay;
-            }
-        }
+        // if ($basicPay > 237500) {
+        //     $payPlusNpa = $basicPay;
+        //     $npaAmount = 0;
+        // } else {
+        //     $payPlusNpa = $basicPay + $npaAmount;
+        //     if ($payPlusNpa > 237500) {
+        //         $payPlusNpa = 237500;
+        //         $npaAmount = $payPlusNpa - $basicPay;
+        //     }
+        // }
 
-        $employeeQuarter = EmployeeQuarter::where('employee_id', $employee->id)->orderBy('date_of_occupation', 'DESC')->first();
-        $houseRentAllowance = HouseRentAllowanceRate::find($request['hra_rate_id']);
-        if ($employee->hra_eligibility) {
-            if (!$houseRentAllowance) {
-                return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-            }
-            $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
-        } else {
-            $today = \Carbon\Carbon::today();
-            if ($employeeQuarter && $employeeQuarter->date_of_occupation <= $today) {
-                if ($employeeQuarter->date_of_leaving === null || $today <= $employeeQuarter->date_of_leaving) {
-                    // Employee is currently occupying the quarter, apply license fee
-                    $quarter = Quarter::find($employeeQuarter->quarter_id);
-                    if ($quarter) {
-                        $license_fee = (float) $quarter->license_fee;
-                    }
-                } else {
-                    // Employee has left the quarter, provide HRA
-                    if (!$houseRentAllowance) {
-                        return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-                    }
-                    $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
-                }
-            } else {
-                // Employee doesn't have a quarter or hasn't occupied it yet, provide HRA
-                if (!$houseRentAllowance) {
-                    return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-                }
-                $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
-            }
-        }
+        // $employeeQuarter = EmployeeQuarter::where('employee_id', $employee->id)->orderBy('date_of_occupation', 'DESC')->first();
+        // $houseRentAllowance = HouseRentAllowanceRate::find($request['hra_rate_id']);
+        // if ($employee->hra_eligibility) {
+        //     if (!$houseRentAllowance) {
+        //         return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
+        //     }
+        //     $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
+        // } else {
+        //     $today = \Carbon\Carbon::today();
+        //     if ($employeeQuarter && $employeeQuarter->date_of_occupation <= $today) {
+        //         if ($employeeQuarter->date_of_leaving === null || $today <= $employeeQuarter->date_of_leaving) {
+        //             // Employee is currently occupying the quarter, apply license fee
+        //             $quarter = Quarter::find($employeeQuarter->quarter_id);
+        //             if ($quarter) {
+        //                 $license_fee = (float) $quarter->license_fee;
+        //             }
+        //         } else {
+        //             // Employee has left the quarter, provide HRA
+        //             if (!$houseRentAllowance) {
+        //                 return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
+        //             }
+        //             $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
+        //         }
+        //     } else {
+        //         // Employee doesn't have a quarter or hasn't occupied it yet, provide HRA
+        //         if (!$houseRentAllowance) {
+        //             return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
+        //         }
+        //         $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
+        //     }
+        // }
 
-        if ($employee->uniform_allowance_eligibility) {
-            $uniformAllowance = UniformAllowanceRate::find($request['uniform_rate_id']);
-            if (!$uniformAllowance) {
-                return response()->json(['errorMsg' => 'Uniform Allowance Rate not found!'], 404);
-            }
-            $uaRateAmount = $uniformAllowance->amount;
-        } else {
-            $uaRateAmount = 0;
-        }
+        // if ($employee->uniform_allowance_eligibility) {
+        //     $uniformAllowance = UniformAllowanceRate::find($request['uniform_rate_id']);
+        //     if (!$uniformAllowance) {
+        //         return response()->json(['errorMsg' => 'Uniform Allowance Rate not found!'], 404);
+        //     }
+        //     $uaRateAmount = $uniformAllowance->amount;
+        // } else {
+        //     $uaRateAmount = 0;
+        // }
 
-        $dearnessAllowanceRate = DearnesAllowanceRate::find($request['da_rate_id']);
-        if (!$dearnessAllowanceRate) {
-            return response()->json(['errorMsg' => 'Dearness Allowance Rate not found!'], 404);
-        }
+        // $dearnessAllowanceRate = DearnesAllowanceRate::find($request['da_rate_id']);
+        // if (!$dearnessAllowanceRate) {
+        //     return response()->json(['errorMsg' => 'Dearness Allowance Rate not found!'], 404);
+        // }
 
-        $employeeGIS = GISEligibility::where('pay_matrix_level', $employeePayLevel->name)->get()->first();
-        if (!$employeeGIS) {
-            return response()->json(['errorMsg' => 'Employee GIS not found!'], 404);
-        }
-        if ($employee->gis_eligibility) {
-            $gisAmount = $employeeGIS->amount;
-        }
+        // $employeeGIS = GISEligibility::where('pay_matrix_level', $employeePayLevel->name)->get()->first();
+        // if (!$employeeGIS) {
+        //     return response()->json(['errorMsg' => 'Employee GIS not found!'], 404);
+        // }
+        // if ($employee->gis_eligibility) {
+        //     $gisAmount = $employeeGIS->amount;
+        // }
 
         if ($employee->credit_society_member) {
             if (!$request['credit_society_membership']) {
@@ -241,11 +261,11 @@ class PaySlipController extends Controller
         $employeeLoan = LoanAdvance::where('employee_id', $employee->id)->where('loan_type', 'Computer')->get()->first();
 
         DB::beginTransaction();
-
+        $computer_advance_inst_no = 0;
         if ($employeeLoan && $employeeLoan->remaining_balance > 0) {
             $employeeLoan->remaining_balance = $employeeLoan->remaining_balance - $request['computer_advance_installment'];
             $employeeLoan->current_installment += 1;
-
+            $computer_advance_inst_no = $employeeLoan->current_installment;
             try {
                 $employeeLoan->save();
                 DB::commit();
@@ -261,8 +281,11 @@ class PaySlipController extends Controller
         $netSalary->year = $request['year'];
         $netSalary->processing_date = $request['processing_date'];
         $netSalary->payment_date = $request['payment_date'];
-        $netSalary->net_amount = 0;
+        $netSalary->net_amount = $request['net_amount'];
         $netSalary->employee_bank_id = $request['employee_bank_id'];
+        $netSalary->remarks = $request['remarks'];
+        $netSalary->employee = $employee ?? null;
+        $netSalary->employee_bank = $employeeBank ?? null;
         $netSalary->added_by = auth()->id();
 
         try {
@@ -277,20 +300,20 @@ class PaySlipController extends Controller
         $net_salary = $netSalary;
 
 
-        if ($net_salary->employee_id != $employeePayStructure->employee_id) {
-            DB::rollBack();
-            return response()->json(['errorMsg' => 'Employee Net Salary and Employee Pay Structure not matched!']);
-        }
+        // if ($net_salary->employee_id != $employeePayStructure->employee_id) {
+        //     DB::rollBack();
+        //     return response()->json(['errorMsg' => 'Employee Net Salary and Employee Pay Structure not matched!']);
+        // }
 
         // if ($employeeCurrentStatus->status == 'Active') {
-        if ($employee->pwd_status) {
-            $taAmount += 2 * $taRate->amount;
-        } else {
-            $taAmount += $taRate->amount;
-        }
-        $daOnTa = $taAmount * ($dearnessAllowanceRate->rate_percentage) / 100;
+        // if ($employee->pwd_status) {
+        //     $taAmount += 2 * $taRate->amount;
+        // } else {
+        //     $taAmount += $taRate->amount;
+        // }
+        // $daOnTa = $taAmount * ($dearnessAllowanceRate->rate_percentage) / 100;
 
-        $daRateAmount = $payPlusNpa * ($dearnessAllowanceRate->rate_percentage / 100);
+        // $daRateAmount = $payPlusNpa * ($dearnessAllowanceRate->rate_percentage / 100);
 
         $salary_date = Carbon::create($request['year'], $request['month'], 1)->toDateString();
         $nps_govt = \App\Models\NPSGovtContribution::where('type', 'GOVT')->get()->last();
@@ -340,54 +363,54 @@ class PaySlipController extends Controller
             $request['itc_leave_salary'] +
             $salaryArrearTotal;
 
-        $totalBasicSalary = $basicPay + $npaAmount  + $taAmount + $hraAmount + $daRateAmount + $uaRateAmount + $daOnTa + $sum;
+        // $totalBasicSalary = $request['basic_pay'] + $request['npa_amount']  + $taAmount + $hraAmount + $daRateAmount + $uaRateAmount + $daOnTa + $sum;
 
-        $totalDeduction =
-            $request['income_tax'] +
-            $request['professional_tax'] +
-            $license_fee  +
-            $request['nfch_donation'] +
-            $request['gpf'] +
-            $request['transport_allowance_recovery'] +
-            $request['hra_recovery'] +
-            $request['computer_advance_installment'] +
-            // $request['computer_advance_balance'] +
-            $employee_contribution_10 +
-            $govt_contribution_14 +
-            $request['dies_non_recovery'] +
-            // $request['computer_advance_interest'] +
-            $gisAmount +
-            $request['pay_recovery'] +
-            $request['nps_recovery'] +
-            $request['lic'] +
-            $request['credit_society_membership'] +
+        $total_deductions =
+            ($request->income_tax ?? 0) +
+            ($request->professional_tax ?? 0) +
+            ($request->nfch_donation ?? 0) +
+            ($request->gpf ?? 0) +
+            ($request->transport_allowance_recovery ?? 0) +
+            ($request->hra_recovery ?? 0) +
+            ($request->license_fee ?? 0) +
+            ($request->computer_advance_installment ?? 0) +
+            ($request->computer_advance_balance ?? 0) +
+            ($request->employee_contribution_10 ?? 0) +
+            ($request->govt_contribution_14_recovery ?? 0) +
+            ($request->dies_non_recovery ?? 0) +
+            ($request->computer_advance_interest ?? 0) +
+            ($request->pay_recovery ?? 0) +
+            ($request->nps_recovery ?? 0) +
+            ($request->lic ?? 0) +
+            ($request->credit_society_membership ?? 0) +
+            ($request->gis ?? 0) +
             $deductionRecoveryTotal;
 
-        $net_salary->net_amount = $totalBasicSalary - $totalDeduction;
+        // $net_salary->net_amount = $totalBasicSalary - $totalDeduction;
         try {
             $net_salary->save();
 
             $pay_slip = $net_salary->paySlip()->create([
                 'pay_structure_id' => $request['pay_structure_id'],
-                'basic_pay' => $basicPay,
+                'basic_pay' => $request['basic_pay'],
                 'da_rate_id' => $request['da_rate_id'],
-                'da_amount' => $daRateAmount,
+                'da_amount' => $request['da_amount'],
                 'hra_rate_id' => $employee->hra_eligibility ? $request['hra_rate_id'] : null,
-                'hra_amount' => $hraAmount,
+                'hra_amount' => $request['hra_amount'],
                 'npa_rate_id' => $employee->npa_eligibility ? $request['npa_rate_id'] : null,
-                'npa_amount' => $npaAmount,
-                'transport_rate_id' => $taRate->id,
-                'transport_amount' => $taAmount,
+                'npa_amount' => $request['npa_amount'],
+                'transport_rate_id' => $request['transport_rate_id'],
+                'transport_amount' => $request['transport_amount'],
                 'uniform_rate_id' => $employee->uniform_allowance_eligibility ? $request['uniform_rate_id'] : null,
-                'uniform_rate_amount' => $uaRateAmount,
-                'govt_contribution' => $govt_contribution_14,
-                'da_on_ta' => $daOnTa,
+                'uniform_rate_amount' => $request['uniform_rate_amount'],
+                'govt_contribution' => $request['govt_contribution_14_recovery'],
+                'da_on_ta' =>  $request['da_on_ta'],
                 'arrears' => $request['arrears'],
                 'spacial_pay' => $request['spacial_pay'],
                 'da_1' => $request['da_1'],
                 'da_2' => $request['da_2'],
                 'itc_leave_salary' => $request['itc_leave_salary'],
-                'total_pay' => $totalBasicSalary,
+                'total_pay' => $request['total_pay'],
                 'added_by' => auth()->id(),
             ]);
             // return response()->json(['successMsg' => 'Pay Slip created!', 'data' => [$net_salary, $pay_slip]]);
@@ -406,25 +429,25 @@ class PaySlipController extends Controller
             $deduction = $net_salary->deduction()->create([
                 'income_tax' => $request['income_tax'],
                 'professional_tax' => $request['professional_tax'],
-                'license_fee' => $license_fee,
+                'license_fee' => $request['license_fee'],
                 'nfch_donation' => $request['nfch_donation'],
                 'gpf' => $request['gpf'],
                 'transport_allowance_recovery' => $request['transport_allowance_recovery'],
                 'hra_recovery' => $request['hra_recovery'],
                 'computer_advance' => $request['computer_advance'],
                 'computer_advance_installment' => $request['computer_advance_installment'],
-                // 'computer_advance_inst_no' => $request['computer_advance_inst_no'],
+                'computer_advance_inst_no' => $computer_advance_inst_no ?? 0,
                 'computer_advance_balance' => $employeeLoan->remaining_balance ?? 0,
-                'employee_contribution_10' =>  $employee_contribution_10,
-                'govt_contribution_14_recovery' => $govt_contribution_14,
+                'employee_contribution_10' =>  $request['employee_contribution_10'],
+                'govt_contribution_14_recovery' => $request['govt_contribution_14_recovery'],
                 'dies_non_recovery' => $request['dies_non_recovery'],
-                // 'computer_advance_interest' => $request['computer_advance_interest'],
-                'gis' => $gisAmount,
+                'computer_advance_interest' => $employeeLoan->loan_amount ?? 0,
+                'gis' => $request['gis'],
                 'pay_recovery' => $request['pay_recovery'],
                 'nps_recovery' => $request['nps_recovery'],
                 'lic' => $request['lic'],
                 'credit_society' => $request['credit_society_membership'],
-                'total_deductions' => $totalDeduction,
+                'total_deductions' => $total_deductions,
                 'added_by' => auth()->id(),
             ]);
             if ($request->filled('deduction_recoveries')) {
@@ -437,6 +460,9 @@ class PaySlipController extends Controller
                     ]);
                 }
             }
+
+            $net_salary->net_amount = $pay_slip->total_pay - $total_deductions;
+            $net_salary->save();
 
             DB::commit();
             return response()->json(['successMsg' => 'Pay Slip created!', 'data' => [$net_salary, $pay_slip, $deduction]]);
@@ -452,21 +478,27 @@ class PaySlipController extends Controller
         if (!$salaryPay) return response()->json(['errorMsg' => 'Pay slip not found!'], 404);
 
         $request->validate([
+            'net_salary_id' => 'nullable|numeric|exists:net_salaries,id',
             'pay_structure_id' => 'required|numeric|exists:employee_pay_structures,id',
-            // 'net_salary_id' => 'required|numeric|exists:net_salaries,id',
-            'da_rate_id' => 'nullable|numeric|exists:dearnes_allowance_rates,id',
+            'basic_pay' => 'required|numeric',
+            'da_rate_id' => 'required|numeric|exists:dearnes_allowance_rates,id',
+            'da_amount' => 'required|numeric',
             'hra_rate_id' => 'nullable|numeric|exists:house_rent_allowance_rates,id',
+            'hra_amount' => 'nullable|numeric',
             'npa_rate_id' => 'nullable|numeric|exists:non_practicing_allowance_rates,id',
+            'npa_amount' => 'nullable|numeric',
             'transport_rate_id' => 'nullable|numeric|exists:transport_allowance_rates,id',
+            'transport_amount' => 'nullable|numeric',
             'uniform_rate_id' => 'nullable|numeric|exists:uniform_allowance_rates,id',
-            'pay_plus_npa' => 'nullable|numeric',
-            'govt_contribution' => 'nullable|numeric',
-            // 'da_on_ta' => 'required|numeric',
+            'uniform_rate_amount' => 'nullable|numeric',
             'arrears' => 'nullable|numeric',
+            'da_on_ta' => 'nullable|numeric',
             'spacial_pay' => 'nullable|numeric',
             'da_1' => 'nullable|numeric',
             'da_2' => 'nullable|numeric',
             'itc_leave_salary' => 'nullable|numeric',
+            'total_pay' => 'required|numeric',
+            'remarks' => 'nullable|string',
         ]);
 
         // $employeeBank = EmployeeBankAccount::find($request['employee_bank_id']);
@@ -512,56 +544,24 @@ class PaySlipController extends Controller
 
 
 
-        if ($employee->npa_eligibility) {
-            $nonPracticingAllowance = NonPracticingAllowanceRate::find($request['npa_rate_id']);
-            if (!$nonPracticingAllowance) {
-                return response()->json(['errorMsg' => 'Non Practicing Allowance not found!'], 404);
-            }
-            $npaAmount += $basicPay * ($nonPracticingAllowance->rate_percentage / 100);
-        }
+        // if ($employee->npa_eligibility) {
+        //     $nonPracticingAllowance = NonPracticingAllowanceRate::find($request['npa_rate_id']);
+        //     if (!$nonPracticingAllowance) {
+        //         return response()->json(['errorMsg' => 'Non Practicing Allowance not found!'], 404);
+        //     }
+        //     $npaAmount += $basicPay * ($nonPracticingAllowance->rate_percentage / 100);
+        // }
 
-        if ($basicPay > 237500) {
-            $payPlusNpa = $basicPay;
-            $npaAmount = 0;
-        } else {
-            $payPlusNpa = $basicPay + $npaAmount;
-            if ($payPlusNpa > 237500) {
-                $payPlusNpa = 237500;
-                $npaAmount = $payPlusNpa - $basicPay;
-            }
-        }
-
-        $employeeQuarter = EmployeeQuarter::where('employee_id', $employee->id)->orderBy('date_of_occupation', 'DESC')->first();
-        $houseRentAllowance = HouseRentAllowanceRate::find($request['hra_rate_id']);
-        if ($employee->hra_eligibility) {
-            if (!$houseRentAllowance) {
-                return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-            }
-            $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
-        } else {
-            $today = \Carbon\Carbon::today();
-            if ($employeeQuarter && $employeeQuarter->date_of_occupation <= $today) {
-                if ($employeeQuarter->date_of_leaving === null || $today <= $employeeQuarter->date_of_leaving) {
-                    // Employee is currently occupying the quarter, apply license fee
-                    $quarter = Quarter::find($employeeQuarter->quarter_id);
-                    if ($quarter) {
-                        $license_fee = (float) $quarter->license_fee;
-                    }
-                } else {
-                    // Employee has left the quarter, provide HRA
-                    if (!$houseRentAllowance) {
-                        return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-                    }
-                    $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
-                }
-            } else {
-                // Employee doesn't have a quarter or hasn't occupied it yet, provide HRA
-                if (!$houseRentAllowance) {
-                    return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-                }
-                $hraAmount += $payPlusNpa * ($houseRentAllowance->rate_percentage / 100);
-            }
-        }
+        // if ($basicPay > 237500) {
+        //     $payPlusNpa = $basicPay;
+        //     $npaAmount = 0;
+        // } else {
+        //     $payPlusNpa = $basicPay + $npaAmount;
+        //     if ($payPlusNpa > 237500) {
+        //         $payPlusNpa = 237500;
+        //         $npaAmount = $payPlusNpa - $basicPay;
+        //     }
+        // }
 
         if ($employee->uniform_allowance_eligibility) {
             $uniformAllowance = UniformAllowanceRate::find($request['uniform_rate_id']);
@@ -617,6 +617,10 @@ class PaySlipController extends Controller
 
         DB::beginTransaction();
 
+        // return response()->json([
+        //     'successMsg' => 'Pay Slip updated!',
+        //     'data' => [$net_salary_old_data]
+        // ]);
         $net_salary_old_data = $net_salary->toArray();
         $net_salary_old_data['pay_structure_id'] = $salaryPay->pay_structure_id;
         $net_salary_old_data['basic_pay'] = $salaryPay->basic_pay ?? 0;
@@ -671,27 +675,26 @@ class PaySlipController extends Controller
 
         // $salaryPay->net_salary_id = $net_salary->id;
         $salaryPay->pay_structure_id = $request['pay_structure_id'];
-        $salaryPay->basic_pay = $basicPay;
+        $salaryPay->basic_pay = $request['basic_pay'];
         $salaryPay->da_rate_id = $request['da_rate_id'];
-        $salaryPay->da_amount = $daRateAmount;
+        $salaryPay->da_amount = $request['da_amount'];
         $salaryPay->hra_rate_id = $request['hra_rate_id'];
-        $salaryPay->hra_amount = $hraAmount;
+        $salaryPay->hra_amount = $request['hra_amount'];
         $salaryPay->npa_rate_id = $request['npa_rate_id'];
-        $salaryPay->npa_amount = $npaAmount;
-        $salaryPay->transport_rate_id = $taRate->id;
-        $salaryPay->transport_amount = $taAmount;
+        $salaryPay->npa_amount = $request['npa_amount'];
+        $salaryPay->transport_rate_id = $request['transport_rate_id'];
+        $salaryPay->transport_amount = $request['transport_amount'];
         $salaryPay->uniform_rate_id = $request['uniform_rate_id'];
-        $salaryPay->uniform_rate_amount = $uaRateAmount;
-        $salaryPay->pay_plus_npa = $request['pay_plus_npa'];
+        $salaryPay->uniform_rate_amount = $request['uniform_rate_amount'];
         $salaryPay->govt_contribution = $request['govt_contribution'];
-        $salaryPay->da_on_ta = $daOnTa;
+        $salaryPay->da_on_ta = $request['da_on_ta'];
         $salaryPay->arrears = $request['arrears'];
         $salaryPay->spacial_pay = $request['spacial_pay'];
         $salaryPay->da_1 = $request['da_1'];
         $salaryPay->da_2 = $request['da_2'];
         $salaryPay->itc_leave_salary = $request['itc_leave_salary'];
-        $salaryPay->total_pay = $totalBasicSalary;
-        $salaryPay->added_by = auth()->id();
+        $salaryPay->total_pay = $request['total_pay'];
+        $salaryPay->edited_by = auth()->id();
 
         try {
             $salaryPay->save();
@@ -699,6 +702,7 @@ class PaySlipController extends Controller
             if ($net_salary->deduction) {
                 $net_salary->net_amount = $salaryPay->total_pay - $net_salary->deduction->total_deductions;
             }
+            $net_salary->remarks = $request['remarks'];
             $net_salary->edited_by = auth()->id();
 
             $net_salary->save();
@@ -791,6 +795,7 @@ class PaySlipController extends Controller
         $previousMonthSalaries = NetSalary::with('paySlip', 'deduction')
             ->where('month', $previousMonth)
             ->where('year', $previousYear)
+            ->where('is_verified', 1)
             ->get();
 
         if ($previousMonthSalaries->isEmpty()) {
@@ -799,7 +804,7 @@ class PaySlipController extends Controller
 
         $generatedCount = 0;
         $errors = [];
-        $skippedEmployees = [];
+        $errors = [];
 
         foreach ($previousMonthSalaries as $previousSalary) {
             // Check if salary for current month already exists
@@ -808,26 +813,68 @@ class PaySlipController extends Controller
                 ->where('year', $request['year'])
                 ->first();
 
-            if ($existingSalary) {
-                $skippedEmployees[] = $previousSalary->employee_id;
-                $errors[] = "Salary for employee ID {$previousSalary->employee_id} already exists for {$request['month']}/{$request['year']}";
-                continue;
-            }
-
             try {
                 // Validate employee and bank account
-                $employee = Employee::find($previousSalary->employee_id);
+                $employee = Employee::with(
+                    'employeeDesignation',
+                    'employeeStatus',
+                    'employeePayStructure.PayMatrixCell.payMatrixLevel',
+                    'employeeBank',
+                    'latestEmployeeDesignation'
+                )->find($previousSalary->employee_id);
                 if (!$employee) {
                     $errors[] = "Employee not found for ID: {$previousSalary->employee_id}";
                     continue;
                 }
 
-                $employeeBank = EmployeeBankAccount::find($previousSalary->employee_bank_id);
-                if (!$employeeBank || $employeeBank->employee_id != $employee->id || !$employeeBank->is_active) {
-                    $errors[] = "Invalid bank account for employee ID: {$previousSalary->employee_id}";
+
+                if ($existingSalary) {
+                    $monthName = \Carbon\Carbon::create()->month($request->month)->format('F');
+
+                    $errors[] = "Salary for employee {$employee->name} already exists for {$monthName} - {$request->year}";
                     continue;
                 }
+
+                $user = User::where('is_retired', 1)->find($employee->user_id);
+                if ($user) {
+                    $errors[] = "Employee is retired: {$employee->name}";
+                    continue;
+                }
+
+                $employeeBank = EmployeeBankAccount::find($previousSalary->employee_bank_id);
+                if (!$employeeBank || $employeeBank->employee_id != $employee->id || !$employeeBank->is_active) {
+                    $errors[] = "Invalid bank account for employee Bank: {$previousSalary->employee->name}";
+                    continue;
+                }
+
+                $employeeStatus = EmployeeStatus::where('employee_id', $employee->id)->orderBy('effective_from', 'DESC')->get()->first();
+                if ($employeeStatus->status === 'Retired') {
+                    $errors[] = "{$previousSalary->employee->name} is retired!";
+                    continue;
+                }
+
+                if ($employeeStatus->status === 'Resigned') {
+                    $errors[] = "{$previousSalary->employee->name} is resigned!";
+                    continue;
+                }
+
                 DB::beginTransaction();
+
+                $employeeLoan = LoanAdvance::where('employee_id', $employee->id)->where('loan_type', 'Computer')->get()->first();
+
+                $computer_advance_inst_no = 0;
+                if ($employeeLoan && $employeeLoan->remaining_balance > 0) {
+                    $employeeLoan->remaining_balance = $employeeLoan->remaining_balance - $previousSalary->deduction->computer_advance_installment;
+                    $employeeLoan->current_installment += 1;
+                    $computer_advance_inst_no = $employeeLoan->current_installment;
+                    try {
+                        $employeeLoan->save();
+                        DB::commit();
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        $errors = "Add Loan error for the {$employee->name} " . $e->getMessage();
+                    }
+                }
 
                 $payComponentsSum = 0;
                 $totalDeductions = 0;
@@ -838,8 +885,10 @@ class PaySlipController extends Controller
                 $newNetSalary->month = $request['month'];
                 $newNetSalary->year = $request['year'];
                 $newNetSalary->processing_date = $request['processing_date'];
-                $newNetSalary->payment_date = $request['payment_date'];
+                $newNetSalary->payment_date = null;
                 $newNetSalary->employee_bank_id = $previousSalary->employee_bank_id;
+                $newNetSalary->employee = $employee ?? null;
+                $newNetSalary->employee_bank = $employeeBank ?? null;
                 $newNetSalary->added_by = auth()->id();
                 $newNetSalary->net_amount = 0;
 
@@ -919,14 +968,14 @@ class PaySlipController extends Controller
                     $newDeduction->gpf = $previousSalary->deduction->gpf;
                     $newDeduction->hra_recovery = $previousSalary->deduction->hra_recovery;
                     $newDeduction->transport_allowance_recovery = $previousSalary->deduction->transport_allowance_recovery;
-                    $newDeduction->computer_advance = $previousSalary->deduction->computer_advance;
-                    $newDeduction->computer_advance_installment = $previousSalary->deduction->computer_advance_installment;
-                    $newDeduction->computer_advance_inst_no = $previousSalary->deduction->computer_advance_inst_no;
-                    $newDeduction->computer_advance_balance = $previousSalary->deduction->computer_advance_balance;
+                    $newDeduction->computer_advance = $previousSalary->deduction->computer_advance ?? 0;
+                    $newDeduction->computer_advance_installment = $previousSalary->deduction->computer_advance_installment ?? 0;
+                    $newDeduction->computer_advance_inst_no = $computer_advance_inst_no ?? 0;
+                    $newDeduction->computer_advance_balance = $employeeLoan->remaining_balance ?? 0;
                     $newDeduction->employee_contribution_10 = $previousSalary->deduction->employee_contribution_10;
                     $newDeduction->govt_contribution_14_recovery = $previousSalary->deduction->govt_contribution_14_recovery;
                     $newDeduction->dies_non_recovery = $previousSalary->deduction->dies_non_recovery;
-                    $newDeduction->computer_advance_interest = $previousSalary->deduction->computer_advance_interest;
+                    $newDeduction->computer_advance_interest = $employeeLoan->loan_amount ?? 0;
                     $newDeduction->gis = $previousSalary->deduction->gis;
                     $newDeduction->pay_recovery = $previousSalary->deduction->pay_recovery;
                     $newDeduction->nps_recovery = $previousSalary->deduction->nps_recovery;
@@ -978,14 +1027,14 @@ class PaySlipController extends Controller
                 }
 
 
-                $newNetSalary->net_amount = $newPaySlip->total_pay - $newDeduction->total_deduction;
+                $newNetSalary->net_amount = $newPaySlip->total_pay - $newDeduction->total_deductions;
                 $newNetSalary->save();
 
                 DB::commit();
                 $generatedCount++;
             } catch (\Exception $e) {
                 DB::rollBack();
-                $errors[] = "Error processing employee ID {$previousSalary->employee}: " . $e->getMessage();
+                $errors[] = "Error processing employee ID {$previousSalary->employee_id}: " . $e->getMessage();
             }
         }
 
@@ -1007,317 +1056,10 @@ class PaySlipController extends Controller
         if (!empty($errors)) {
             $response['warnings'] = $errors;
         }
-        if (!empty($skippedEmployees)) {
-            $response['skipped_employees'] = $skippedEmployees;
-        }
+        // if (!empty($errors)) {
+        //     $response['skipped_employees'] = $errors;
+        // }
 
         return response()->json($response);
     }
-
-    // function bulkStore(Request $request)
-    // {
-    //     $taAmount = 0; // Transport Allowance
-    //     $gisAmount = 0;
-    //     // $csmAmount = 0; // Credit society Member
-    //     $npaAmount = 0; // Non Practicing Allowance
-    //     $hraAmount = 0; // House Rent Allowance
-    //     $daRateAmount = 0; // Dearness Allowance Rate
-    //     $uaRateAmount = 0; // Uniform Allowance Rate 
-    //     $totalBasicSalary = 0;
-    //     $netAmount = 0;
-    //     $license_fee = 0; // License Fee from Quarter
-
-    //     $request->validate([
-    //         'month' => 'required|numeric|max:12|min:1',
-    //         'year' => 'required|numeric|digits:4|min:1900',
-    //         'processing_date' => 'required|date',
-    //         'payment_date' => 'nullable|date',
-    //     ]);
-
-    //     $previousMonth = $request['month'];
-    //     $previousYear = $request['year'];
-    //     if ($request['month'] == 1) {
-    //         $previousMonth = 13;
-    //         $previousYear -= 1;
-    //     }
-
-    //     $lastVerifiedEmployee = NetSalary::with('paySlip', 'deduction')->where('month', $previousMonth - 1)->where('year', $previousYear)->get(); //->where('is_verified', 1)
-    //     // if ($lastVerifiedEmployee) {
-    //     //     return response()->json(['errorMsg' => 'No employee found for this requirement!'], 404);
-    //     // }
-    //     foreach ($lastVerifiedEmployee as $employeeData) {
-    //         $taAmount = 0; // Transport Allowance
-    //         $gisAmount = 0;
-    //         // $csmAmount = 0; // Credit society Member
-    //         $npaAmount = 0; // Non Practicing Allowance
-    //         $hraAmount = 0; // House Rent Allowance
-    //         $daRateAmount = 0; // Dearness Allowance Rate
-    //         $uaRateAmount = 0; // Uniform Allowance Rate 
-    //         $totalBasicSalary = 0;
-    //         $license_fee = 0; // License Fee from Quarter
-    //         // return response()->json(['data', $employeeData]);
-
-    //         $employee = Employee::find($employeeData->employee_id);
-    //         if (!$employee) return response()->json(['errorMsg' => 'Employee not found!'], 404);
-
-    //         $employeeBank = EmployeeBankAccount::find($employeeData->employee_bank_id);
-    //         if ($employeeBank->employee_id != $employee->id) return response()->json(['errorMsg' => 'This Bank is not related to this employee!'], 400);
-    //         if (!$employeeBank) return response()->json(['errorMsg' => 'Employee Bank not found!'], 404);
-    //         if (!$employeeBank->is_active) return response()->json(['errorMsg' => 'Please fill the correct Bank'], 400);
-
-    //         $employeePayStructure = EmployeePayStructure::with('payMatrixCell.payMatrixLevel')->find($employeeData->paySlip->pay_structure_id);
-    //         if (!$employeePayStructure) {
-    //             return response()->json(['errorMsg' => 'Employee Pay Structure not found!'], 404);
-    //         }
-    //         $employeePayCell = $employeePayStructure->payMatrixCell;
-    //         $employeePayLevel = $employeePayStructure->payMatrixCell->payMatrixLevel;
-    //         $basicPay = $employeePayStructure->PayMatrixCell->amount;
-
-    //         $taRate = EmployeeTransportAllowance::where('pay_matrix_level', $employeePayLevel->name)->first();
-    //         if (!$taRate) {
-    //             return response()->json(['errorMsg' => 'Transport Allowance not found!'], 404);
-    //         }
-
-    //         if ($employee->npa_eligibility) {
-    //             $nonPracticingAllowance = NonPracticingAllowanceRate::find($employeeData->paySlip->npa_rate_id);
-    //             if (!$nonPracticingAllowance) {
-    //                 return response()->json(['errorMsg' => 'Non Practicing Allowance not found!'], 404);
-    //             }
-    //             $npaAmount += $basicPay * ($nonPracticingAllowance->rate_percentage / 100);
-    //         }
-
-    //         $employeeQuarter = EmployeeQuarter::where('employee_id', $employee->id)->orderBy('date_of_occupation', 'DESC')->first();
-    //         $houseRentAllowance = HouseRentAllowanceRate::find($employeeData->paySlip->hra_rate_id);
-    //         if ($employee->hra_eligibility) {
-    //             if (!$houseRentAllowance) {
-    //                 return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-    //             }
-    //             $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
-    //         } else {
-    //             $today = \Carbon\Carbon::today();
-    //             if ($employeeQuarter && $employeeQuarter->date_of_occupation <= $today) {
-    //                 if ($employeeQuarter->date_of_leaving === null || $today <= $employeeQuarter->date_of_leaving) {
-    //                     // Employee is currently occupying the quarter, apply license fee
-    //                     $quarter = Quarter::find($employeeQuarter->quarter_id);
-    //                     if ($quarter) {
-    //                         $license_fee = (float) $quarter->license_fee;
-    //                     }
-    //                 } else {
-    //                     // Employee has left the quarter, provide HRA
-    //                     if (!$houseRentAllowance) {
-    //                         return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-    //                     }
-    //                     $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
-    //                 }
-    //             } else {
-    //                 // Employee doesn't have a quarter or hasn't occupied it yet, provide HRA
-    //                 if (!$houseRentAllowance) {
-    //                     return response()->json(['errorMsg' => 'House Rent Allowance not found!'], 404);
-    //                 }
-    //                 $hraAmount += $basicPay * ($houseRentAllowance->rate_percentage / 100);
-    //             }
-    //         }
-
-    //         if ($employee->uniform_allowance_eligibility) {
-    //             $uniformAllowance = UniformAllowanceRate::find($employeeData->paySlip->uniform_rate_id);
-    //             if (!$uniformAllowance) {
-    //                 return response()->json(['errorMsg' => 'Uniform Allowance Rate not found!'], 404);
-    //             }
-    //             $uaRateAmount = $uniformAllowance->amount;
-    //         } else {
-    //             $uaRateAmount = 0;
-    //         }
-
-    //         $dearnessAllowanceRate = DearnesAllowanceRate::find($employeeData->paySlip->da_rate_id);
-    //         if (!$dearnessAllowanceRate) {
-    //             return response()->json(['errorMsg' => 'Dearness Allowance Rate not found!'], 404);
-    //         }
-
-    //         $old_net_salary = NetSalary::where('employee_id', $employeeData->employee_id)->where('month', $request['month'])->where('year', $request['year'])->get()->first();
-    //         if ($old_net_salary) return response()->json(['errorMsg' => 'This month salary is already generated!'], 400);
-
-    //         DB::beginTransaction();
-
-    //         $netSalary = new NetSalary();
-    //         $netSalary->employee_id = $employeeData->employee_id;
-    //         $netSalary->month = $request['month'];
-    //         $netSalary->year = $request['year'];
-    //         $netSalary->processing_date = $request['processing_date'];
-    //         $netSalary->payment_date = $request['payment_date'];
-    //         $netSalary->net_amount = 0;
-    //         $netSalary->employee_bank_id = $employeeData->employee_bank_id;
-    //         $netSalary->added_by = auth()->id();
-
-    //         try {
-    //             $netSalary->save();
-
-    //             // return response()->json(['successMsg' => 'Net Salary Created!', 'data' => $netSalary]);
-    //         } catch (\Exception $e) {
-    //             DB::rollBack();
-    //             return response()->json(['errorMsg' => $e->getMessage()], 500);
-    //         }
-
-    //         $net_salary = $netSalary;
-
-    //         $employeeStatus = EmployeeStatus::where('employee_id', $employee->id)->orderBy('effective_from', 'DESC')->get();
-    //         $employeeCurrentStatus = $employeeStatus[0];
-
-
-
-    //         if ($net_salary->employee_id != $employeePayStructure->employee_id) {
-    //             DB::rollBack();
-    //             return response()->json(['errorMsg' => 'Employee Net Salary and Employee Pay Structure not matched!']);
-    //         }
-
-    //         // if ($employeeCurrentStatus->status == 'Active') {
-
-    //         if ($employee->pwd_status) {
-    //             $taAmount += 2 * $taRate->amount;
-    //         } else {
-    //             $taAmount += $taRate->amount;
-    //         }
-    //         $daOnTa = ($taAmount * 50) / 100;
-
-    //         $payMatrixCell = PayMatrixCell::with('payMatrixLevel')->where('index', $employeePayCell->index)->orderBy('amount', 'DESC')->get();
-
-    //         $totalOfBasicPayAndNPA = $basicPay + $npaAmount;
-    //         if ($totalOfBasicPayAndNPA >= 237500) {
-    //             $totalOfBasicPayAndNPA = 237500;
-    //         }
-    //         $daRateAmount = $totalOfBasicPayAndNPA * ($dearnessAllowanceRate->rate_percentage / 100);
-    //         $sum = $employeeData->paySlip->govt_contribution +  $employeeData->paySlip->pay_plus_npa + $employeeData->paySlip->spacial_pay + $employeeData->paySlip->arrears + $employeeData->paySlip->da_1 + $employeeData->paySlip->da_2 + $employeeData->paySlip->itc_leave_salary;
-    //         $totalBasicSalary = $basicPay + $taAmount + $gisAmount + $npaAmount + $hraAmount + $daRateAmount + $uaRateAmount + $daOnTa + $sum;
-
-    //         $net_salary->net_amount = $totalBasicSalary;
-    //         try {
-    //             $net_salary->save();
-    //         } catch (\Exception $e) {
-    //             DB::rollBack();
-    //             return response()->json(['errorMsg' => $e->getMessage()], 500);
-    //         }
-
-
-    //         $salaryPay = new PaySlip();
-    //         $salaryPay->net_salary_id = $net_salary->id;
-    //         $salaryPay->pay_structure_id = $employeeData->paySlip->pay_structure_id;
-    //         $salaryPay->basic_pay = $basicPay;
-    //         $salaryPay->da_rate_id = $employeeData->paySlip->da_rate_id;
-    //         $salaryPay->da_amount = $daRateAmount;
-    //         $salaryPay->hra_rate_id = $employeeData->paySlip->hra_rate_id;
-    //         $salaryPay->hra_amount = $hraAmount;
-    //         $salaryPay->npa_rate_id = $employeeData->paySlip->npa_rate_id;
-    //         $salaryPay->npa_amount = $npaAmount;
-    //         $salaryPay->transport_rate_id = $taRate->id;
-    //         $salaryPay->transport_amount = $taAmount;
-    //         $salaryPay->uniform_rate_id = $employeeData->paySlip->uniform_rate_id;
-    //         $salaryPay->uniform_rate_amount = $uaRateAmount;
-    //         $salaryPay->pay_plus_npa = $employeeData->paySlip->pay_plus_npa;
-    //         $salaryPay->govt_contribution = $employeeData->paySlip->govt_contribution;
-    //         $salaryPay->da_on_ta = $daOnTa;
-    //         $salaryPay->arrears = $employeeData->paySlip->arrears;
-    //         $salaryPay->spacial_pay = $employeeData->paySlip->spacial_pay;
-    //         $salaryPay->da_1 = $employeeData->paySlip->da_1;
-    //         $salaryPay->da_2 = $employeeData->paySlip->da_2;
-    //         $salaryPay->itc_leave_salary = $employeeData->paySlip->itc_leave_salary;
-    //         $salaryPay->total_pay = $totalBasicSalary;
-    //         $salaryPay->added_by = auth()->id();
-
-    //         try {
-    //             $salaryPay->save();
-    //             DB::commit();
-    //         } catch (\Exception $e) {
-    //             DB::rollBack();
-    //             return response()->json(['errorMsg' => $e->getMessage()], 500);
-    //         }
-
-    //         $gisAmount = 0;
-    //         $employeeGIS = GISEligibility::where('pay_matrix_level', $employeePayLevel->name)->get()->first();
-    //         if (!$employeeGIS) {
-    //             return response()->json(['errorMsg' => 'Employee GIS not found!'], 404);
-    //         }
-    //         if ($employee->gis_eligibility) {
-    //             $gisAmount = $employeeGIS->amount;
-    //         }
-
-    //         if ($employeeData->deduction) {
-    //             $deduction = new Deduction();
-    //             $deduction->net_salary_id = $net_salary->id;
-    //             $deduction->income_tax = $employeeData->deduction->income_tax;
-    //             $deduction->professional_tax = $employeeData->deduction->professional_tax;
-    //             $deduction->license_fee = $license_fee > 0 ? $license_fee : $employeeData->deduction->license_fee;
-    //             $deduction->nfch_donation = $employeeData->deduction->nfch_donation;
-    //             $deduction->gpf = $employeeData->deduction->gpf;
-    //             $deduction->hra_recovery = $employeeData->deduction->hra_recovery;
-    //             $deduction->transport_allowance_recovery = $employeeData->deduction->transport_allowance_recovery;
-    //             $deduction->computer_advance = $employeeData->deduction->computer_advance;
-    //             $deduction->computer_advance_installment = $employeeData->deduction->computer_advance_installment;
-    //             $deduction->computer_advance_inst_no = $employeeData->deduction->computer_advance_inst_no;
-    //             $deduction->computer_advance_balance = $employeeData->deduction->computer_advance_balance;
-    //             $deduction->employee_contribution_10 = $employeeData->deduction->employee_contribution_10;
-    //             $deduction->govt_contribution_14_recovery = $employeeData->deduction->govt_contribution_14_recovery;
-    //             $deduction->dies_non_recovery = $employeeData->deduction->dies_non_recovery;
-    //             $deduction->computer_advance_interest = $employeeData->deduction->computer_advance_interest;
-    //             $deduction->gis = $gisAmount;
-    //             $deduction->pay_recovery = $employeeData->deduction->pay_recovery;
-    //             $deduction->nps_recovery = $employeeData->deduction->nps_recovery;
-    //             $deduction->lic = $employeeData->deduction->lic;
-    //             $deduction->credit_society = $employeeData->deduction->credit_society;
-
-    //             $totalDeduction = $deduction->income_tax +
-    //                 $deduction->professional_tax +
-    //                 $deduction->license_fee +
-    //                 $deduction->nfch_donation +
-    //                 $deduction->gpf +
-    //                 $deduction->hra_recovery +
-    //                 $deduction->transport_allowance_recovery +
-    //                 $deduction->computer_advance +
-    //                 $deduction->computer_advance_installment +
-    //                 $deduction->computer_advance_inst_no +
-    //                 $deduction->computer_advance_balance +
-    //                 $deduction->employee_contribution_10 +
-    //                 $deduction->govt_contribution_14_recovery +
-    //                 $deduction->dies_non_recovery +
-    //                 $deduction->computer_advance_interest +
-    //                 $deduction->gis +
-    //                 $deduction->pay_recovery +
-    //                 $deduction->nps_recovery  +
-    //                 $deduction->lic +
-    //                 $deduction->credit_society;
-
-    //             $deduction->total_deductions = $totalDeduction;
-    //             $deduction->added_by = auth()->id();
-
-    //             try {
-    //                 $deduction->save();
-
-    //                 $net_salary->net_amount = $net_salary->paySlip->total_pay - $deduction->total_deductions;
-
-    //                 $netSalary->save();
-
-    //                 DB::commit();
-    //             } catch (\Exception $e) {
-    //                 DB::rollBack();
-    //                 return response()->json(['errorMsg' => $e->getMessage()], 500);
-    //             }
-    //         }
-    //     }
-
-    //     // $generatedSalaries = Employee::whereHas(
-    //     //     'netSalary',
-    //     //     fn($q) => $q->where('month', 'LIKE', '5')
-    //     //         ->where('year', 'LIKE', '2026')
-    //     // )->get();
-
-    //     $generatedSalaries = Employee::whereHas(
-    //         'netSalary',
-    //         fn($q) => $q->where('month', $request['month'])
-    //             ->where('year', $request['year'])
-    //     )->with([
-    //         'netSalary' =>
-    //         fn($q) => $q->where('month', $request['month'])
-    //             ->where('year', $request['year'])
-    //     ])->get();
-
-    //     return response()->json(['successMsg' => 'salary generated!', 'data' => $generatedSalaries]);
-    // }
 }

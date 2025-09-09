@@ -68,7 +68,7 @@ class DeductionSheetExport implements FromCollection, WithHeadings, WithMapping,
     public function headings(): array
     {
         return [
-            'nName',
+            'Name',
             'Income Tax',
             'Professional Tax',
             'License Fee',

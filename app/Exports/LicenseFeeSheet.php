@@ -35,6 +35,7 @@ class LicenseFeeSheet implements FromCollection, WithHeadings, WithMapping, With
 
     public function collection()
     {
+        $user = auth()->user();
         $now = Carbon::now();
 
         $currentMonth = $now->month;
@@ -78,13 +79,16 @@ class LicenseFeeSheet implements FromCollection, WithHeadings, WithMapping, With
             fn($qn) => $qn->where('license_fee', "!=", 0)
         )
             ->with([
-                'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-                'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-                'employeeBank:id,employee_id,account_number',
-                'employee.latestEmployeeDesignation:id,employee_id,designation',
+                // 'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+                // 'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+                // 'employeeBank:id,employee_id,account_number',
+                // 'employee.latestEmployeeDesignation:id,employee_id,designation',
                 'paySlip',
                 'deduction',
-            ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+            ])->when(
+                $user->institute !== 'BOTH',
+                fn($q) => $q->where('employee->institute', $user->institute)
+            )->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
     }
 
     private function safeValue($value)
@@ -133,10 +137,10 @@ class LicenseFeeSheet implements FromCollection, WithHeadings, WithMapping, With
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
+        // $bank = $netSalary->employeeBank ?? (object) [];
         $paySlip = $netSalary->paySlip ?? (object) [];
         $deduction = $netSalary->deduction ?? (object) [];
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        // $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
@@ -146,7 +150,7 @@ class LicenseFeeSheet implements FromCollection, WithHeadings, WithMapping, With
             $this->serial++,
             $monthYear,
             $employee->name,
-            optional($employee->latestEmployeeDesignation)->designation,
+            $employee->latest_employee_designation->designation ?? '',
 
             $this->safeValue($deduction->license_fee ?? null),
 

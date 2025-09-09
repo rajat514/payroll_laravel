@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helper\Mailer;
 use App\Http\Controllers\Controller;
+use App\Models\BankAccount;
 use App\Models\Employee;
 use App\Models\NetPension;
 use App\Models\PensionerInformation;
@@ -37,13 +39,16 @@ class NetPensionController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $employee = Employee::where('user_id', $this->user->id)->first();
-        if ($employee) $pensioner = PensionerInformation::where('retired_employee_id', $employee->id)->first();
-        $query = NetPension::with('pensionerDeduction', 'monthlyPension', 'pensioner.employee');
+        // $employee = Employee::where('user_id', $this->user->id)->first();
+        // if ($employee) $pensioner = PensionerInformation::where('retired_employee_id', $employee->id)->first();
 
-        if ($this->user->hasAnyRole(['End Users'])) {
-            $query->where('pensioner_id', $pensioner->id);
-        }
+        $query = NetPension::with('pensionerDeduction', 'monthlyPension', 'pensionerRelation');
+
+        // if ($this->user->hasAnyRole(['End Users'])) {
+        //     $query->where('pensioner_id', $pensioner->id);
+        // }
+
+        // if ($this->user->hasRole(''))
 
         $query->when(
             request('month'),
@@ -56,9 +61,48 @@ class NetPensionController extends Controller
         );
 
         $query->when(
-            request('is_verified') != null,
-            fn($q) => $q->where('is_verified', 'LIKE', '%' . request('is_verified') . '%')
+            request('ppo_no'),
+            fn($q) => $q->whereHas(
+                'pensionerRelation',
+                fn($qe) => $qe->where('ppo_no', 'LIKE', '%' . request('ppo_no') . '%')
+            )
         );
+
+        $query->when(
+            request('user_id'),
+            fn($q) => $q->whereHas(
+                'pensionerRelation',
+                fn($qe) => $qe->where('user_id', request('user_id'))
+            )
+        );
+
+        $query->when(
+            request('is_verified') !== null,
+            fn($q) =>
+            $q->where('is_verified', request('is_verified'))
+        );
+
+        $query->when(
+            request('is_finalize') !== null,
+            fn($q) =>
+            $q->where('is_finalize', request('is_finalize'))
+        );
+
+        if (!$this->user->hasRole('IT Admin')) {
+            if ($this->user->hasAnyRole([
+                'Pensioners Operator'
+            ])) {
+                // No restrictions – can view all salary entries
+            } elseif ($this->user->hasAnyRole([
+                'Drawing and Disbursing Officer (NIOH)'
+            ])) {
+                $query->where('pensioner_operator_status', 1);
+            } elseif ($this->user->hasAnyRole(['Section Officer (Accounts)'])) {
+                $query->where('ddo_status', 1);
+            } elseif ($this->user->hasRole('Accounts Officer')) {
+                $query->where('section_officer_status', 1);
+            }
+        }
 
         $total_count = $query->count();
 
@@ -67,11 +111,47 @@ class NetPensionController extends Controller
         return response()->json(['data' => $data, 'total_count' => $total_count]);
     }
 
+    function viewOwnPension()
+    {
+        $page = request('page') ? (int)request('page') : 1;
+        $limit = request('limit') ? (int)request('limit') : 30;
+        $offset = ($page - 1) * $limit;
+
+        $pensioner = PensionerInformation::where('user_id', $this->user->id)->first();
+
+        if (!$pensioner) {
+            return response()->json(['errorMsg', 'Pensioner not found!']);
+        }
+
+        $query = NetPension::with('pensionerDeduction', 'monthlyPension', 'pensionerRelation');
+
+        $query->where('pensioner_id', $pensioner->id);
+
+        $query->when(
+            request('month'),
+            fn($q) => $q->where('month', request('month'))
+        );
+
+        $query->when(
+            request('year'),
+            fn($q) => $q->where('year', request('year'))
+        );
+
+        $query->where('is_verified', 1);
+
+        $total_count = $query->count();
+
+        $data = $query->orderBy('year', 'DESC')->orderBy('month', 'DESC')->offset($offset)->limit($limit)->get();
+
+        return response()->json(['data' => $data, 'total_count' => $total_count]);
+    }
+
+
     function update(Request $request, $id)
     {
-        if (!$this->user->hasAnyRole($this->can_update_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_update_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
         $netPension = NetPension::find($id);
         if (!$netPension) return response()->json(['errorMsg' => 'Net Pension not found!'], 404);
 
@@ -121,9 +201,9 @@ class NetPensionController extends Controller
             'editedBy.roles:id,name',
             'pensionerDeduction',
             'monthlyPension',
-            'pensioner.employee',
-            'pensioner.pensionRelatedInfo',
-            'pensionerBank',
+            // 'pensioner.employee',
+            // 'pensioner.pensionRelatedInfo',
+            // 'pensionerBank',
             'history.monthlyPension',
             'history.pensionerDeduction'
         )->find($id);
@@ -316,7 +396,7 @@ class NetPensionController extends Controller
                 // Step 2: DDO
                 if (($request->input('ddo_status') ?? 0) == 1) {
                     if ($netSalary->pensioner_operator_status != 1) {
-                        return response()->json(['errorMsg' => 'Salary Processing approval is required before DDO approval.'], 422);
+                        return response()->json(['errorMsg' => 'Pensioner Operator approval is required before DDO approval.'], 422);
                     }
                     if ($netSalary->ddo_status == 0) {
                         $netSalary->ddo_status = 1;
@@ -343,13 +423,9 @@ class NetPensionController extends Controller
                     if ($netSalary->account_officer_status == 0) {
                         $netSalary->account_officer_status = 1;
                         $netSalary->account_officer_date = $now;
-                        $netSalary->payment_date = $now;
                     }
                 }
             } else {
-                // ✅ Non-Admin users ke liye naya logic
-                // Yahan hum `else if` ke bajaye multiple `if` ka istemal karenge
-                // taki ek user multiple roles ke task perform kar sake.
 
                 $hasPermission = false;
 
@@ -367,7 +443,7 @@ class NetPensionController extends Controller
                     $hasPermission = true;
                     if (($request->input('ddo_status') ?? 0) == 1) {
                         if ($netSalary->pensioner_operator_status != 1) {
-                            return response()->json(['errorMsg' => 'Salary Processing approval is required before you can approve as DDO.'], 422);
+                            return response()->json(['errorMsg' => 'Pensioner Operator approval is required before you can approve as DDO.'], 422);
                         }
                         if ($netSalary->ddo_status == 0) {
                             $netSalary->ddo_status = 1;
@@ -400,7 +476,6 @@ class NetPensionController extends Controller
                         if ($netSalary->account_officer_status == 0) {
                             $netSalary->account_officer_status = 1;
                             $netSalary->account_officer_date = $now;
-                            $netSalary->payment_date = $now;
                         }
                     }
                 }
@@ -423,5 +498,275 @@ class NetPensionController extends Controller
         }
 
         return response()->json(['data' => 'Salary verified successfully!']);
+    }
+
+    public function finalizePension(Request $request)
+    {
+
+        $user = Auth::user();
+
+        if (!$user->hasAnyRole(['Accounts Officer', 'IT Admin'])) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
+        $data = $request->input('selected_id');
+        if (!is_array($data)) {
+            $data = [$data];
+        }
+
+        $skipPension = [];
+        $errors = [];
+        $success = [];
+
+        foreach ($data as $index) {
+            $net_pension = NetPension::find($index);
+
+            if (!$net_pension) {
+                $skipPension[] = $index;
+                continue;
+            }
+
+            if ($net_pension->account_officer_status != 1) {
+                $errors[] = "{$net_pension->pensioner->name} Pension requires Account Officer approval.";
+                continue;
+            }
+
+            if ($net_pension->is_finalize === 1) {
+                $errors[] = " {$net_pension->pensioner->name} Pension already finalized.";
+                continue;
+            }
+
+            try {
+                $net_pension->is_finalize = 1;
+                $net_pension->payment_date = now();
+                $net_pension->finalized_date = now();
+                $net_pension->edited_by = $user->id;
+                $net_pension->save();
+
+                $success[] = $net_pension->pensioner->name;
+            } catch (\Exception $e) {
+                $errors[] = "Error finalizing Pension {$index}: " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'successMsg' => count($success) > 0 ? 'Pension finalized successfully!' : null,
+            'success' => $success,
+            'skipped' => $skipPension,
+            'errors' => $errors
+        ]);
+    }
+
+
+    public function releasePension(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasAnyRole(['Accounts Officer', 'IT Admin'])) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
+        $data = $request->input('selected_id');
+        if (!is_array($data)) {
+            $data = [$data];
+        }
+
+        $skipPension = [];
+        $errors = [];
+        $success = [];
+
+        foreach ($data as $index) {
+            $net_pension = NetPension::with('pensionerRelation.user')->find($index);
+
+            if (!$net_pension) {
+                $skipPension[] = $index;
+                continue;
+            }
+
+            if ($net_pension->is_finalize != 1) {
+                $errors[] = " {$net_pension->pensioner->name} Pension requires finalize approval.";
+                continue;
+            }
+
+            if ($net_pension->is_verified === 1) {
+                $errors[] = " {$net_pension->pensioner->name} Pension already released.";
+                continue;
+            }
+
+            try {
+                $net_pension->is_verified = 1;
+                $net_pension->released_date = now();
+                $net_pension->edited_by = $user->id;
+                $net_pension->save();
+
+                $success[] = $net_pension->pensioner->name;
+
+                if ($net_pension->pensioner->email) {
+                    $sent = $this->sendSuccessMail(
+                        $net_pension->pensioner->email,
+                        $net_pension->month,
+                        $net_pension->year,
+                        $net_pension->id
+                    );
+                    if (!$sent) {
+                        $errors[] = "Unable to send salary release email to {$net_pension->pensioner->name}. Please verify the email address.";
+                        continue;
+                    }
+                }
+            } catch (\Exception $e) {
+                $errors[] = "Error releasing Pension {$index}: " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'successMsg' => count($success) > 0 ? 'Pension released successfully!' : null,
+            'success'    => $success,
+            'skipped'    => $skipPension,
+            'errors'     => $errors
+        ]);
+    }
+
+    private function sendSuccessMail($email, $month, $year, $netPensionId)
+    {
+        try {
+            $months = [
+                1 => 'January',
+                2 => 'February',
+                3 => 'March',
+                4 => 'April',
+                5 => 'May',
+                6 => 'June',
+                7 => 'July',
+                8 => 'August',
+                9 => 'September',
+                10 => 'October',
+                11 => 'November',
+                12 => 'December',
+            ];
+
+            $monthName = $months[$month] ?? $month;
+
+            // 1. Get salary record with relations
+            $pension = NetPension::with([
+                'pensionerDeduction',
+                'monthlyPension',
+            ])->find($netPensionId);
+
+            if (!$pension) {
+                return false;
+            }
+
+            // 2. Generate PDF using mPDF via service for better Indic support
+            // $pdfService = new \App\Services\PdfService();
+            // $pdfBinary = $pdfService->renderView('pdf.pensionPdf', compact('pension'));
+
+            // // Save PDF temporarily in storage
+            // $fileName = "pension-slip-{$pension->pensioner->ppo_no}-{$monthName}-{$year}.pdf";
+            // $filePath = storage_path("app/public/{$fileName}");
+            // file_put_contents($filePath, $pdfBinary);
+            $pdfService = new \App\Services\PdfService();
+            $pdfBinary = $pdfService->renderView('pdf.pensionPdf', compact('pension', 'monthName', 'year'));
+
+            // Save PDF temporarily in storage
+            $fileName = "pension-slip-{$pension->pensioner->ppo_no}-{$monthName}-{$year}.pdf";
+            $filePath = storage_path("app/public/{$fileName}");
+            file_put_contents($filePath, $pdfBinary);
+
+            // $instituteName = $pension->pensioner->user->institute === 'ROHC'
+            // ? 'ROHC - Regional Occupational Health Centre , Bangalore-562110'
+            $instituteName = 'NIOH - National Institute of Occupational Health , Ahmedabad-380016';
+
+            // 3. Prepare email body
+            $body = "
+        <html>
+          <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+            <p>Dear {$pension->pensioner->name},</p>
+
+            <p>
+             Please find attached the pension slip for the month of {$monthName} {$year}.
+            </p>
+
+            <p>
+              <strong>Note: </strong> This is a system-generated email. Kindly do not replyto this message.
+            </p>
+
+            <p>
+              Regards,<br/>
+              <strong>For Account Staff</strong>
+               {$instituteName}
+            </p>
+          </body>
+        </html>
+        ";
+
+            // 4. Prepare mail data with attachment
+            $mailer = new Mailer();
+            $mailData = [
+                'to' => $email,
+                'subject' => "Pension Slip for $monthName $year",
+                'body' => $body,
+                'attachments' => [$filePath] // 👈 pass attachment
+            ];
+
+            $result = $mailer->sendMail($mailData);
+
+            // Remove temp file after sending
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            \Log::error('Salary Mail failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function updateAllNetPensionsWithMissingData()
+    {
+        $netSalaries = NetPension::all();
+        $updatedEmployees = [];
+        foreach ($netSalaries as $netSalary) {
+            $updated = false;
+
+            // return response()->json(['data' => $netSalary]);
+            // Agar employee field null hai
+            if (empty($netSalary->pensioner) && $netSalary->pensioner_id) {
+                $pensioner = PensionerInformation::with(
+                    'employee'
+                )
+                    ->find($netSalary->pensioner_id);
+
+                if ($pensioner) {
+                    $netSalary->pensioner = $pensioner;
+                    $updated = true;
+                }
+            }
+
+            // Agar employee_bank field null hai
+            if (empty($netSalary->pensioner_bank) && $netSalary->pensioner_bank_id) {
+                $employeeBank = BankAccount::find($netSalary->pensioner_bank_id);
+
+                if ($employeeBank) {
+                    $netSalary->pensioner_bank = $employeeBank;
+                    $updated = true;
+                }
+            }
+
+            if ($updated) {
+                $netSalary->save();
+
+                // Employee ka naam ya code record kar lo
+                $empName = $netSalary->pensioner_id
+                    ? ($pensioner->name ?? "Employee ID: {$netSalary->pensioner_id}")
+                    : "Unknown Employee";
+                $updatedEmployees[] = $empName;
+            }
+        }
+
+        return response()->json([
+            "message" => "All NetSalary records checked and updated where missing.",
+            "updated_employees" => $updatedEmployees
+        ]);
     }
 }

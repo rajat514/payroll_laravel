@@ -31,6 +31,12 @@ return new class extends Migration
             $table->timestamp('section_officer_date')->nullable();
             $table->boolean('account_officer_status')->default(0);
             $table->timestamp('account_officer_date')->nullable();
+            $table->text('arrears')->nullable();
+            $table->boolean('is_finalize')->default(0);
+            $table->timestamp('released_date')->nullable();
+            $table->timestamp('finalized_date')->nullable();
+            $table->text('pensioner')->nullable();
+            $table->text('pensioner_bank')->nullable();
 
             $table->foreignId('pension_rel_info_id')->constrained('pension_related_infos');
             $table->float('basic_pension', 10, 2);

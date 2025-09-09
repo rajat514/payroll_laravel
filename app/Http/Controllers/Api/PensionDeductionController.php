@@ -32,9 +32,9 @@ class PensionDeductionController extends Controller
 
     public function index()
     {
-        if (!$this->user->hasAnyRole($this->can_view_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_view_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $page = request('page') ? (int)request('page') : 1;
         $limit = request('limit') ? (int)request('limit') : 30;
@@ -62,9 +62,9 @@ class PensionDeductionController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$this->user->hasAnyRole($this->can_add_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_add_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $request->validate([
             'net_pension_id' => 'required|exists:net_pensions,id',
@@ -117,9 +117,9 @@ class PensionDeductionController extends Controller
      */
     public function show(string $id)
     {
-        if (!$this->user->hasAnyRole($this->can_view_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_view_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $data = PensionDeduction::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'netPension.pensioner.employee', 'history.netPension.pensioner')->find($id);
 
@@ -131,9 +131,9 @@ class PensionDeductionController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        if (!$this->user->hasAnyRole($this->can_update_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_update_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $data = PensionDeduction::find($id);
         if (!$data) return response()->json(['errorMsg' => 'Pension deduction not found!'], 404);
@@ -168,6 +168,7 @@ class PensionDeductionController extends Controller
         $net_pension_old_data['medical_allowance'] = $netPension->monthlyPension->medical_allowance;
         $net_pension_old_data['total_arrear'] = $netPension->monthlyPension->total_arrear;
         $net_pension_old_data['total_pension'] = $netPension->monthlyPension->total_pension;
+        $net_pension_old_data['arrears'] = $netPension->monthlyPension->arrears ? json_encode($netPension->monthlyPension->arrears) : null;
         $net_pension_old_data['remarks'] = $netPension->monthlyPension->remarks;
         $net_pension_old_data['status'] = $netPension->monthlyPension->status;
         $net_pension_old_data['commutation_amount'] = $data->commutation_amount;

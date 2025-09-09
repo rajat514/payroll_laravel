@@ -11,7 +11,7 @@ class NonPracticingAllowanceRateController extends Controller
 {
     private \App\Models\User $user;
 
-    private $all_permission_roles = ['IT Admin', 'Director'];
+    private $all_permission_roles = ['IT Admin', 'Director', 'Salary Processing Coordinator (ROHC)', 'Salary Processing Coordinator (NIOH)'];
 
     function __construct()
     {

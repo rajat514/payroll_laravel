@@ -217,8 +217,12 @@ class ReportController extends Controller
 
     function dashBoardCount()
     {
+        $user = auth()->user();
+
         $total_employees = Employee::count();
-        $total_users = User::count();
+        $total_users = User::whereDoesntHave('roles', function ($q) {
+            $q->where('name', 'IT Admin');
+        })->count();
         $total_nioh_employees = Employee::where('institute', 'NIOH')->count();
         $total_rohc_employees = Employee::where('institute', 'ROHC')->count();
         $total_pensioners = PensionerInformation::count();
@@ -242,49 +246,136 @@ class ReportController extends Controller
         $year = request('year');
         $month = request('month');
 
+        $total_net_pension = 0;
+        $total_net_pay = 0;
+        $total_income_tax = 0;
+        $total_deduction = 0;
 
-        $netSalaries = NetSalary::with('paySlip', 'deduction')
+        $query = NetSalary::with('paySlip', 'deduction')
             ->where('year', $year ?? $previousMonthYear)
-            ->where('month', $month ?? $previousMonth)
-            ->when(
-                $this->user->institute !== 'BOTH',
-                fn($q) => $q->whereHas(
-                    'employee',
-                    fn($qn) => $qn->where('institute', $this->user->institute)
-                )
+            ->where('month', $month ?? $previousMonth);
+
+        if ($this->user->hasAnyRole([
+            'IT Admin',
+            'Section Officer(Accounts)',
+            'Accounts Officer',
+            'Administrative Officer',
+            'Senior AO',
+            'Director',
+        ])) {
+            $netSalaries = $query->whereHas(
+                'employeeRelation',
+                fn($qn) => $qn->where('institute', request('institute'))
             )
-            ->get();
+                ->get();
 
-        $total_basic_pay = $netSalaries->sum(function ($salary) {
-            return $salary->paySlip->basic_pay ?? 0;
-        });
-        $total_income_tax = $netSalaries->sum(function ($salary) {
-            return $salary->deduction->income_tax ?? 0;
-        });
+            $total_basic_pay = $netSalaries->sum(function ($salary) {
+                return $salary->paySlip->basic_pay ?? 0;
+            });
+            $total_deduction = $netSalaries->sum(function ($salary) {
+                return $salary->deduction->total_deductions ?? 0;
+            });
+            $total_income_tax = $netSalaries->sum(function ($salary) {
+                return $salary->deduction->income_tax ?? 0;
+            });
 
-        $total_net_pay = $netSalaries->sum('net_amount');
+            $total_net_pay = $netSalaries->sum('net_amount');
 
-        $net_pension = NetPension::with('monthlyPension', 'pensionerDeduction')
-            ->where('year', $year ?? $previousMonthYear)
-            ->where('month', $month ?? $previousMonth)
-            ->when(
-                $this->user->institute !== 'BOTH',
-                fn($q) => $q->whereHas(
-                    'pensioner',
-                    fn($p) => $p->whereHas(
-                        'employee',
-                        fn($e) => $e->where('institute', $this->user->institute)
-                    )
-                )
+            $net_pension = NetPension::with('monthlyPension', 'pensionerDeduction')
+                ->where('year', $year ?? $previousMonthYear)
+                ->where('month', $month ?? $previousMonth)
+                // ->whereHas(
+                //     'pensioner',
+                //     fn($p) => $p->whereHas(
+                //         'user',
+                //         fn($e) => $e->where('institute', request('institute'))
+                //     )
+                // )
+                ->get();
+
+            $total_net_pension = $net_pension->sum('net_pension');
+
+            return response()->json([
+                'total_income_tax' => $total_income_tax,
+                'total_net_pay' => $total_net_pay,
+                'total_deduction' => $total_deduction,
+                'total_net_pension' => $total_net_pension
+            ]);
+        }
+
+        if ($this->user->hasAnyRole([
+            'Drawing and Disbursing Officer (ROHC)',
+            'Salary Processing Coordinator (ROHC)',
+        ])) {
+            $netSalaries = $query->whereHas(
+                'employeeRelation',
+                fn($qn) => $qn->where('institute', 'ROHC')
             )
-            ->get();
+                ->get();
 
-        $total_net_pension = $net_pension->sum('net_pension');
+            $total_basic_pay = $netSalaries->sum(function ($salary) {
+                return $salary->paySlip->basic_pay ?? 0;
+            });
+            $total_deduction = $netSalaries->sum(function ($salary) {
+                return $salary->deduction->total_deductions ?? 0;
+            });
+            $total_income_tax = $netSalaries->sum(function ($salary) {
+                return $salary->deduction->income_tax ?? 0;
+            });
 
-        return response()->json([
-            'total_income_tax' => $total_income_tax,
-            'total_net_pay' => $total_net_pay,
-            'total_net_pension' => $total_net_pension
-        ]);
+            $total_net_pay = $netSalaries->sum('net_amount');
+
+            return response()->json([
+                'total_income_tax' => $total_income_tax,
+                'total_net_pay' => $total_net_pay,
+                'total_deduction' => $total_deduction,
+                'total_net_pension' => $total_net_pension
+            ]);
+        }
+        if ($this->user->hasAnyRole([
+            'Salary Processing Coordinator (NIOH)',
+            'Drawing and Disbursing Officer (NIOH)',
+        ])) {
+            $netSalaries = $query->whereHas(
+                'employeeRelation',
+                fn($qn) => $qn->where('institute', '!=', 'ROHC')
+            )
+                ->get();
+
+            $total_basic_pay = $netSalaries->sum(function ($salary) {
+                return $salary->paySlip->basic_pay ?? 0;
+            });
+            $total_deduction = $netSalaries->sum(function ($salary) {
+                return $salary->deduction->total_deductions ?? 0;
+            });
+            $total_income_tax = $netSalaries->sum(function ($salary) {
+                return $salary->deduction->income_tax ?? 0;
+            });
+
+            $total_net_pay = $netSalaries->sum('net_amount');
+
+            return response()->json([
+                'total_income_tax' => $total_income_tax,
+                'total_net_pay' => $total_net_pay,
+                'total_deduction' => $total_deduction,
+                'total_net_pension' => $total_net_pension
+            ]);
+        }
+        if ($this->user->hasAnyRole([
+            'Pensioners Operator',
+        ])) {
+            $net_pension = NetPension::with('monthlyPension', 'pensionerDeduction')
+                ->where('year', $year ?? $previousMonthYear)
+                ->where('month', $month ?? $previousMonth)
+                ->get();
+
+            $total_net_pension = $net_pension->sum('net_pension');
+
+            return response()->json([
+                'total_income_tax' => $total_income_tax,
+                'total_net_pay' => $total_net_pay,
+                'total_net_pension' => $total_net_pension
+            ]);
+        }
     }
 }

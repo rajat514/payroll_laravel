@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helper\Mailer;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\EmployeeBankAccount;
 use App\Models\NetSalary;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -27,48 +29,139 @@ class NetSalaryController extends Controller
         });
     }
 
-    function index()
+    public function index()
     {
         $page = request('page') ? (int)request('page') : 1;
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = NetSalary::with('deduction', 'paySlip', 'employee');
+        $query = NetSalary::with('deduction', 'paySlip', 'employeeRelation');
 
-        $query->when(
-            $this->user->institute !== 'BOTH',
-            fn($q) => $q->whereHas(
-                'employee',
-                fn($qn) => $qn->where('institute', $this->user->institute)
-            )
-        );
+        // 🔍 Institute filtering based on role
+        $query->when(true, function ($q) {
+            // IT Admin sees everything, so we apply no institute filter for them.
+            if ($this->user->hasRole('IT Admin')) {
+                return; // Exit the closure, applying no filter.
+            }
 
+            $allowedInstitutes = [];
+
+            // Check for NIOH-related roles and add their institutes to the list.
+            if ($this->user->hasAnyRole([
+                'Salary Processing Coordinator (NIOH)',
+                'Drawing and Disbursing Officer (NIOH)'
+            ])) {
+                $allowedInstitutes = array_merge($allowedInstitutes, ['NIOH', 'BOTH']);
+            }
+
+            // Independently, check for ROHC-related roles and add their institute.
+            if ($this->user->hasAnyRole([
+                'Salary Processing Coordinator (ROHC)',
+                'Drawing and Disbursing Officer (ROHC)'
+            ])) {
+                $allowedInstitutes[] = 'ROHC';
+            }
+
+            // If the user's roles resulted in any specific institute permissions, apply them.
+            if (!empty($allowedInstitutes)) {
+                $q->whereHas(
+                    'employeeRelation',
+                    fn($qn) => $qn->whereIn('institute', array_unique($allowedInstitutes))
+                );
+            } else {
+                // This block is for users without the special Coordinator/DDO roles (e.g., 'End Users').
+                // We fall back to filtering by their own assigned institute.
+                if ($this->user->institute !== 'BOTH') {
+                    $q->whereHas(
+                        'employeeRelation',
+                        fn($qn) => $qn->where('institute', $this->user->institute)
+                    );
+                }
+                // If a user's institute is 'BOTH' and they don't have special roles, they see all institutes.
+            }
+        });
+
+        // 🔍 Additional filters
         $query->when(
             request('employee_id'),
-            fn($q) => $q->where('employee_id', request('employee_id'))
+            fn($q) =>
+            $q->where('employee_id', request('employee_id'))
         );
 
         $query->when(
             request('month'),
-            fn($q) => $q->where('month', request('month'))
+            fn($q) =>
+            $q->where('month', request('month'))
         );
 
         $query->when(
             request('year'),
-            fn($q) => $q->where('year', request('year'))
+            fn($q) =>
+            $q->where('year', request('year'))
         );
 
         $query->when(
-            request('is_verified') != null,
-            fn($q) => $q->where('is_verified', request('is_verified'))
+            request('is_verified') !== null,
+            fn($q) =>
+            $q->where('is_verified', request('is_verified'))
         );
 
+        $query->when(
+            request('is_finalize') !== null,
+            fn($q) =>
+            $q->where('is_finalize', request('is_finalize'))
+        );
+
+
+        $institute = request('institute');
+
+        if ($institute) {
+            $query->whereHas('employeeRelation', function ($qn) use ($institute) {
+                if ($institute === 'NIOH') {
+                    $qn->whereIn('institute', ['NIOH', 'BOTH']);
+                } elseif ($institute === 'ROHC') {
+                    $qn->where('institute', 'ROHC');
+                }
+            });
+        }
+
+
+        // 👥 Role-based approval level filters
+        if (!$this->user->hasRole('IT Admin')) {
+            if ($this->user->hasAnyRole([
+                'Salary Processing Coordinator (NIOH)',
+                'Salary Processing Coordinator (ROHC)'
+            ])) {
+                // No restrictions – can view all salary entries
+            } elseif ($this->user->hasAnyRole([
+                'Drawing and Disbursing Officer (NIOH)',
+                'Drawing and Disbursing Officer (ROHC)'
+            ])) {
+                $query->where('salary_processing_status', 1);
+            } elseif ($this->user->hasAnyRole(['Section Officer (Accounts)'])) {
+                $query->where('ddo_status', 1);
+            } elseif ($this->user->hasRole('Accounts Officer')) {
+                $query->where('section_officer_status', 1);
+            }
+        }
+
+        // 📊 Final result
         $total_count = $query->count();
 
-        $data = $query->orderBy('year', 'DESC')->orderBy('month', 'DESC')->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();
+        $data = $query
+            ->orderBy('year', 'DESC')
+            ->orderBy('month', 'DESC')
+            ->orderBy('created_at', 'DESC')
+            ->offset($offset)
+            ->limit($limit)
+            ->get();
 
-        return response()->json(['data' => $data, 'total_count' => $total_count]);
+        return response()->json([
+            'data' => $data,
+            'total_count' => $total_count
+        ]);
     }
+
 
     function viewOwnSalary()
     {
@@ -78,7 +171,11 @@ class NetSalaryController extends Controller
 
         $employee = Employee::where('user_id', $this->user->id)->first();
 
-        $query = NetSalary::with('deduction', 'paySlip', 'employee');
+        if (!$employee) {
+            return response()->json(['errorMsg', 'Employee not found!']);
+        }
+
+        $query = NetSalary::with('deduction', 'paySlip');
 
         $query->where('employee_id', $employee->id);
 
@@ -92,10 +189,7 @@ class NetSalaryController extends Controller
             fn($q) => $q->where('year', request('year'))
         );
 
-        $query->when(
-            request('is_verified') != null,
-            fn($q) => $q->where('is_verified', request('is_verified'))
-        );
+        $query->where('is_verified', 1);
 
         $total_count = $query->count();
 
@@ -152,8 +246,9 @@ class NetSalaryController extends Controller
     function show($id)
     {
         $netSalary = NetSalary::with(
-            'employee.employeeDesignation',
-            'employeeBank',
+            'employeeRelation.employeeDesignation',
+            'employeeRelation.employeeStatus',
+            'employeeBankRelation',
             'deduction.deductionRecoveries',
             'paySlip.salaryArrears',
             'verifiedBy.roles:id,name',
@@ -398,8 +493,6 @@ class NetSalaryController extends Controller
                     if ($netSalary->account_officer_status == 0) {
                         $netSalary->account_officer_status = 1;
                         $netSalary->account_officer_date = $now;
-                        $netSalary->is_verified = 1;
-                        $netSalary->payment_date = $now;
                     }
                 }
             } else {
@@ -456,8 +549,6 @@ class NetSalaryController extends Controller
                         if ($netSalary->account_officer_status == 0) {
                             $netSalary->account_officer_status = 1;
                             $netSalary->account_officer_date = $now;
-                            $netSalary->is_verified = 1;
-                            $netSalary->payment_date = $now;
                         }
                     }
                 }
@@ -480,5 +571,274 @@ class NetSalaryController extends Controller
         }
 
         return response()->json(['data' => 'Salary verified successfully!']);
+    }
+
+    public function finalizeSalary(Request $request)
+    {
+
+        $user = Auth::user();
+
+        if (!$user->hasAnyRole(['Accounts Officer', 'IT Admin'])) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
+        $data = $request->input('selected_id');
+        if (!is_array($data)) {
+            $data = [$data];
+        }
+
+        $skipSalary = [];
+        $errors = [];
+        $success = [];
+
+        foreach ($data as $index) {
+            $net_salary = NetSalary::find($index);
+
+            if (!$net_salary) {
+                $skipSalary[] = $index;
+                continue;
+            }
+
+            if ($net_salary->account_officer_status != 1) {
+                $errors[] = "{$net_salary->employee->name} Salary requires Account Officer approval.";
+                continue;
+            }
+
+            if ($net_salary->is_finalize === 1) {
+                $errors[] = " {$net_salary->employee->name} Salary already finalized.";
+                continue;
+            }
+
+            try {
+                $net_salary->is_finalize = 1;
+                $net_salary->finalized_date = now();
+                $net_salary->payment_date = now();
+                $net_salary->edited_by = $user->id;
+                $net_salary->save();
+
+                $success[] = $net_salary->employee->name;
+            } catch (\Exception $e) {
+                $errors[] = "Error finalizing Salary {$index}: " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'successMsg' => count($success) > 0 ? 'Salary finalized successfully!' : null,
+            'success' => $success,
+            'skipped' => $skipSalary,
+            'errors' => $errors
+        ]);
+    }
+
+
+    public function releaseSalary(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user->hasAnyRole(['Accounts Officer', 'IT Admin'])) {
+            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        }
+
+        $data = $request->input('selected_id');
+        if (!is_array($data)) {
+            $data = [$data];
+        }
+
+        $skipSalary = [];
+        $errors = [];
+        $success = [];
+
+        foreach ($data as $index) {
+            $net_salary = NetSalary::find($index);
+
+            if (!$net_salary) {
+                $skipSalary[] = $index;
+                continue;
+            }
+
+            if ($net_salary->is_finalize != 1) {
+                $errors[] = " {$net_salary->employee->name} Salary requires finalize approval.";
+                continue;
+            }
+
+            if ($net_salary->is_verified === 1) {
+                $errors[] = " {$net_salary->employee->name} Salary already released.";
+                continue;
+            }
+
+            try {
+                $net_salary->is_verified = 1;
+                $net_salary->released_date = now();
+                $net_salary->edited_by = $user->id;
+                $net_salary->save();
+
+
+                // $sent = $this->sendSuccessMail($net_salary->employee->email, $net_salary->month, $net_salary->year);
+                $sent = $this->sendSuccessMail(
+                    $net_salary->employee->email,
+                    $net_salary->month,
+                    $net_salary->year,
+                    $net_salary->id
+                );
+                if (!$sent) {
+                    $errors[] = "Unable to send salary release email to {$net_salary->employee->name}. Please verify the email address.";
+                    continue;
+                }
+                $success[] = $net_salary->employee->name;
+            } catch (\Exception $e) {
+                $errors[] = "Error releasing Salary {$index}: " . $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            'successMsg' => count($success) > 0 ? 'Salary released successfully!' : null,
+            'success'    => $success,
+            'skipped'    => $skipSalary,
+            'errors'     => $errors
+        ]);
+    }
+
+    private function sendSuccessMail($email, $month, $year, $netSalaryId)
+    {
+        try {
+            $months = [
+                1 => 'January',
+                2 => 'February',
+                3 => 'March',
+                4 => 'April',
+                5 => 'May',
+                6 => 'June',
+                7 => 'July',
+                8 => 'August',
+                9 => 'September',
+                10 => 'October',
+                11 => 'November',
+                12 => 'December',
+            ];
+
+            $monthName = $months[$month] ?? $month;
+
+            // 1. Get salary record with relations
+            $salary = NetSalary::with([
+                'deduction.deductionRecoveries',
+                'paySlip.salaryArrears',
+                'employeeRelation'
+            ])->find($netSalaryId);
+
+            if (!$salary) {
+                return false;
+            }
+
+            // 2. Generate PDF using mPDF via service for better Indic support
+            $pdfService = new \App\Services\PdfService();
+            $pdfBinary = $pdfService->renderView('pdf.pdf', compact('salary', 'monthName', 'year'));
+
+            // Save PDF temporarily in storage
+            $fileName = "salary-slip-{$salary->employee->employee_code}-{$monthName}-{$year}.pdf";
+            $filePath = storage_path("app/public/{$fileName}");
+            file_put_contents($filePath, $pdfBinary);
+
+            $instituteName = $salary->employee->institute === 'ROHC'
+                ? 'ROHC - Regional Occupational Health Centre , Bangalore-562110'
+                : 'NIOH - National Institute of Occupational Health , Ahmedabad-380016';
+
+            // 3. Prepare email body
+            $body = "
+        <html>
+          <body style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+            <p>Dear {$salary->employee->name},</p>
+
+            <p>
+             Please find attached the salary slip for the month of {$monthName} {$year}.
+            </p>
+
+            <p>
+              <strong>Note: </strong> This is a system-generated email. Kindly do not replyto this message.
+            </p>
+
+            <p>
+              Regards,<br/>
+              <strong>For Account Staff</strong>
+               {$instituteName}
+            </p>
+          </body>
+        </html>
+        ";
+
+            // 4. Prepare mail data with attachment
+            $mailer = new Mailer();
+            $mailData = [
+                'to' => $email,
+                'subject' => "Salary Slip for $monthName $year",
+                'body' => $body,
+                'attachments' => [$filePath] // 👈 pass attachment
+            ];
+
+            $result = $mailer->sendMail($mailData);
+
+            // Remove temp file after sending
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            \Log::error('Salary Mail failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+
+
+    public function updateAllNetSalariesWithMissingData()
+    {
+        $netSalaries = NetSalary::all();
+        $updatedEmployees = [];
+        foreach ($netSalaries as $netSalary) {
+            $updated = false;
+
+            // return response()->json(['data' => $netSalary]);
+            // Agar employee field null hai
+            if (empty($netSalary->employee) && $netSalary->employee_id) {
+                $employee = Employee::with(
+                    'employeeDesignation',
+                    'employeeStatus',
+                    'employeePayStructure.PayMatrixCell.payMatrixLevel',
+                    'employeeBank',
+                    'latestEmployeeDesignation'
+                )
+                    ->find($netSalary->employee_id);
+
+                if ($employee) {
+                    $netSalary->employee = $employee;
+                    $updated = true;
+                }
+            }
+
+            // Agar employee_bank field null hai
+            if (empty($netSalary->employee_bank) && $netSalary->employee_bank_id) {
+                $employeeBank = EmployeeBankAccount::find($netSalary->employee_bank_id);
+
+                if ($employeeBank) {
+                    $netSalary->employee_bank = $employeeBank;
+                    $updated = true;
+                }
+            }
+
+            if ($updated) {
+                $netSalary->save();
+
+                // Employee ka naam ya code record kar lo
+                $empName = $netSalary->employee_id
+                    ? ($employee->name ?? "Employee ID: {$netSalary->employee_id}")
+                    : "Unknown Employee";
+                $updatedEmployees[] = $empName;
+            }
+        }
+
+        return response()->json([
+            "message" => "All NetSalary records checked and updated where missing.",
+            "updated_employees" => $updatedEmployees
+        ]);
     }
 }

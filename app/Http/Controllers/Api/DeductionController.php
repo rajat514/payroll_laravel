@@ -69,6 +69,7 @@ class DeductionController extends Controller
             'nps_recovery' => 'nullable|numeric',
             'lic' => 'nullable|numeric',
             'credit_society_membership' => 'nullable|numeric',
+            'remarks' => 'nullable|string',
         ]);
 
         $gisAmount = 0;
@@ -185,6 +186,7 @@ class DeductionController extends Controller
             'license_fee' => 'nullable|numeric',
             'nfch_donation' => 'nullable|numeric',
             'gpf' => 'nullable|numeric',
+            'gis' => 'nullable|numeric',
             'transport_allowance_recovery' => 'nullable|numeric',
             'hra_recovery' => 'nullable|numeric',
             'computer_advance' => 'nullable|numeric',
@@ -199,6 +201,8 @@ class DeductionController extends Controller
             'nps_recovery' => 'nullable|numeric',
             'lic' => 'nullable|numeric',
             'credit_society_membership' => 'nullable|numeric',
+            'remarks' => 'nullable|string',
+            'total_deductions' => 'required|numeric',
         ]);
 
         $gisAmount = 0;
@@ -304,11 +308,12 @@ class DeductionController extends Controller
         $deduction->govt_contribution_14_recovery = $request['govt_contribution_14_recovery'];
         $deduction->dies_non_recovery = $request['dies_non_recovery'];
         $deduction->computer_advance_interest = $request['computer_advance_interest'];
-        $deduction->gis = $gisAmount;
+        $deduction->gis = $request['gis'];
         $deduction->pay_recovery = $request['pay_recovery'];
         $deduction->nps_recovery = $request['nps_recovery'];
         $deduction->lic = $request['lic'];
         $deduction->credit_society = $request['credit_society_membership'];
+        $deduction->total_deductions = $request['total_deductions'];
 
         // $deductionRecoverySum = DeductionRecoveries::where('deduction_id', $deduction->id)->sum('amount');
         $deductionRecoveryTotal = 0;
@@ -340,7 +345,7 @@ class DeductionController extends Controller
             $deduction->credit_society +
             $deductionRecoveryTotal;
 
-        $deduction->total_deductions = $totalDeduction;
+        // $deduction->total_deductions = $totalDeduction;
         $deduction->edited_by = auth()->id();
 
         try {
@@ -348,6 +353,7 @@ class DeductionController extends Controller
 
             $netSalary->net_amount = $netSalary->paySlip->total_pay - $deduction->total_deductions;
             $netSalary->edited_by = auth()->id();
+            $netSalary->remarks = $request['remarks'];
 
             $netSalary->save();
 

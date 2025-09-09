@@ -41,7 +41,7 @@ class EmployeeQuarterController extends Controller
                 'employee_id' => 'required|numeric|exists:employees,id',
                 'quarter_id' => 'required|numeric|exists:quarters,id',
                 'date_of_allotment' => 'required|date',
-                'date_of_occupation' => 'required|date|after:date_of_allotment',
+                'date_of_occupation' => 'required|date|after_or_equal:date_of_allotment',
                 'date_of_leaving' => 'nullable|date|after:date_of_occupation|after:date_of_allotment',
                 'is_current' => 'boolean|in:1,0',
                 'order_reference' => 'nullable|string|max:191'
@@ -99,7 +99,7 @@ class EmployeeQuarterController extends Controller
                 'employee_id' => 'required|numeric|exists:employees,id',
                 'quarter_id' => 'required|numeric|exists:quarters,id',
                 'date_of_allotment' => 'required|date',
-                'date_of_occupation' => 'required|date|after:date_of_allotment',
+                'date_of_occupation' => 'required|date|after_or_equal:date_of_allotment',
                 'date_of_leaving' => 'nullable|date|after:date_of_occupation|after:date_of_allotment',
                 'is_current' => 'boolean|in:1,0',
                 'order_reference' => 'nullable|string|max:191',

@@ -37,13 +37,33 @@ class NetPension extends Model
         return $this->hasMany(NetPensionClone::class)->orderBy('created_at', 'DESC');
     }
 
-    public function pensioner(): BelongsTo
+    public function pensionerRelation(): BelongsTo
     {
-        return $this->belongsTo(PensionerInformation::class);
+        return $this->belongsTo(PensionerInformation::class, 'pensioner_id');
     }
 
-    public function pensionerBank(): BelongsTo
+    public function pensionerBankRelation(): BelongsTo
     {
-        return $this->belongsTo(BankAccount::class);
+        return $this->belongsTo(BankAccount::class, 'pensioner_bank_id');
+    }
+
+    public function getPensionerAttribute($value)
+    {
+        return !empty($value) ? json_decode($value) : null;
+    }
+
+    public function setPensionerAttribute($value)
+    {
+        $this->attributes['pensioner'] = !empty($value) ? json_encode($value) : null;
+    }
+
+    public function getPensionerBankAttribute($value)
+    {
+        return !empty($value) ? json_decode($value) : null;
+    }
+
+    public function setPensionerBankAttribute($value)
+    {
+        $this->attributes['pensioner_bank'] = !empty($value) ? json_encode($value) : null;
     }
 }

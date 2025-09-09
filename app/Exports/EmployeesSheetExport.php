@@ -39,6 +39,8 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
 
     private function prepareDynamicColumns(): void
     {
+        $user = auth()->user();
+        // dd($user->hasRole('IT Admin'));
         $now = Carbon::now();
 
         $currentMonth = $now->month;
@@ -74,13 +76,16 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
         }
 
         self::$netSalaries = $query->with([
-            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-            'employeeBank:id,employee_id,account_number',
-            'employee.latestEmployeeDesignation:id,employee_id,designation',
+            // 'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+            // 'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+            // 'employeeBank:id,employee_id,account_number',
+            // 'employee.latestEmployeeDesignation:id,employee_id,designation',
             'paySlip.salaryArrears',
             'deduction.deductionRecoveries',
-        ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+        ])->when(
+            $user->institute !== 'BOTH',
+            fn($q) => $q->where('employee->institute', $user->institute)
+        )->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
 
         self::$salaryArrearTypes = self::$netSalaries->flatMap(function ($item) {
             return collect(optional($item->paySlip)->salaryArrears)->pluck('type');
@@ -110,6 +115,7 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
             'Month',
             'Emp Code',
             'Name',
+            'Institute',
             'Increment Month',
             'Matrix Level',
             'Designation',
@@ -122,6 +128,7 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
             'Transport',
             'Uniform',
             'DA on TA',
+            'GOVT Contribution',
             'Leave Salary',
             'Arrears',
             'Gross Pay',
@@ -143,20 +150,36 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
             'Credit Society'
         ];
 
+        $verificationArray = [
+            'Salary Processing Status',
+            'Salary Processing Date',
+            'DDO Status',
+            'DDO Date',
+            'Section Officer Status',
+            'Section Officer Date',
+            'Account Officer Status',
+            'Account Officer Date',
+            'Is Finalized',
+            'Finalized Date',
+            'Is Released',
+            'Released Date',
+        ];
+
         $arrearHeadings = array_map(fn($type) => "{$type}", self::$salaryArrearTypes);
         $recoveryHeadings = array_map(fn($type) => "{$type}", self::$deductionRecoveryTypes);
 
-        return array_merge($fixedHeadings, $arrearHeadings, $recoveryHeadings, ['Total Deductions', 'Net Amount']);
+        return array_merge($fixedHeadings, $arrearHeadings, $recoveryHeadings, ['Total Deductions', 'Net Amount'], $verificationArray);
     }
 
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
+        // dd($netSalary);
+        $bank = $netSalary->employee_bank ?? (object) [];
         $paySlip = optional($netSalary->paySlip);
         $deduction = optional($netSalary->deduction);
 
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        $pay_level = $netSalary->employee->employee_pay_structure->pay_matrix_cell->pay_matrix_level;
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
@@ -167,16 +190,16 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
 
         $arrearMap = collect(self::$salaryArrearTypes)->map(fn($type) => $this->safeValue($arrears->firstWhere('type', $type)?->amount));
         $recoveryMap = collect(self::$deductionRecoveryTypes)->map(fn($type) => $this->safeValue($recoveries->firstWhere('type', $type)?->amount));
-
         return array_merge([
             $this->serial++,
             $employee->pension_number,
             $monthYear,
             $employee->employee_code,
             $employee->name,
-            $employee->increment_month,
+            $employee->institute === 'ROHC' ? 'ROHC' : 'NIOH',
+            $employee->increment_month === 1 ? 'January' : 'July',
             $pay_level->name ?? '',
-            optional($employee->latestEmployeeDesignation)->designation,
+            $employee->latest_employee_designation->designation ?? '',
             $bank->account_number,
             $this->safeValue($paySlip->basic_pay),
             $this->safeValue($paySlip->npa_amount),
@@ -186,6 +209,7 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
             $this->safeValue($paySlip->transport_amount),
             $this->safeValue($paySlip->uniform_rate_amount),
             $this->safeValue($paySlip->da_on_ta),
+            $this->safeValue($paySlip->govt_contribution),
             $this->safeValue($paySlip->itc_leave_salary),
             $this->safeValue($paySlip->arrears),
             $this->safeValue($paySlip->total_pay),
@@ -208,8 +232,108 @@ class EmployeesSheetExport implements FromCollection, WithHeadings, WithMapping,
         ], $arrearMap->toArray(), $recoveryMap->toArray(), [
             $this->safeValue($deduction->total_deductions),
             $this->safeValue($netSalary->net_amount),
+
+            $this->formatStatus($netSalary->salary_processing_status),
+            $this->safe($netSalary->salary_processing_date, true),
+            $this->formatStatus($netSalary->ddo_status),
+            $this->safe($netSalary->ddo_date, true),
+            $this->formatStatus($netSalary->section_officer_status),
+            $this->safe($netSalary->section_officer_date, true),
+            $this->formatStatus($netSalary->account_officer_status),
+            $this->safe($netSalary->account_officer_date, true),
+            $this->formatStatus($netSalary->is_finalize),
+            $this->safe($netSalary->finalized_date, true),
+            $this->formatStatus($netSalary->is_verified),
+            $this->safe($netSalary->released_date, true),
         ]);
     }
+    private function formatStatus($value)
+    {
+        if (is_null($value)) {
+            return '';
+        }
+        return $value == 1 ? 'Yes' : 'No';
+    }
+
+    private function safe($value, $isDate = false, $format = 'd-m-Y H:i')
+    {
+        if (is_null($value) || $value === '') {
+            return '';
+        }
+
+        if ($isDate) {
+            try {
+                return \Carbon\Carbon::parse($value)->format($format);
+            } catch (\Exception $e) {
+                return $value; // fallback if not a valid date
+            }
+        }
+
+        return $value;
+    }
+
+    // public function map($netSalary): array
+    // {
+    //     $employee = $netSalary->employee;
+    //     $bank = $netSalary->employeeBank ?? (object) [];
+    //     $paySlip = optional($netSalary->paySlip);
+    //     $deduction = optional($netSalary->deduction);
+
+    //     $pay_level = optional(optional(optional($netSalary->employee->employee_pay_structure)->pay_matrix_cell)->pay_matrix_level);
+
+    //     $monthName = Carbon::create()->month($netSalary->month)->format('F');
+    //     $monthYear = $monthName . ' ' . $netSalary->year;
+    //     $payPlusNpa = ($paySlip->basic_pay ?? 0) + ($paySlip->npa_amount ?? 0);
+
+    //     $arrears = collect(optional($paySlip)->salaryArrears ?? []);
+    //     $recoveries = collect(optional($deduction)->deductionRecoveries ?? []);
+
+    //     $arrearMap = collect(self::$salaryArrearTypes)->map(fn($type) => $this->safeValue($arrears->firstWhere('type', $type)?->amount));
+    //     $recoveryMap = collect(self::$deductionRecoveryTypes)->map(fn($type) => $this->safeValue($recoveries->firstWhere('type', $type)?->amount));
+
+    //     return array_merge([
+    //         $this->serial++,
+    //         $employee->pension_number,
+    //         $monthYear,
+    //         $employee->employee_code,
+    //         $employee->name,
+    //         $employee->increment_month === 1 ? 'January' : 'July',
+    //         $pay_level->name ?? '',
+    //         optional($employee->latest_employee_designation)->designation,
+    //         $bank->account_number,
+    //         $this->safeValue($paySlip->basic_pay),
+    //         $this->safeValue($paySlip->npa_amount),
+    //         $this->safeValue($payPlusNpa),
+    //         $this->safeValue($paySlip->da_amount),
+    //         $this->safeValue($paySlip->hra_amount),
+    //         $this->safeValue($paySlip->transport_amount),
+    //         $this->safeValue($paySlip->uniform_rate_amount),
+    //         $this->safeValue($paySlip->da_on_ta),
+    //         $this->safeValue($paySlip->govt_contribution),
+    //         $this->safeValue($paySlip->itc_leave_salary),
+    //         $this->safeValue($paySlip->arrears),
+    //         $this->safeValue($paySlip->total_pay),
+    //         $this->safeValue($deduction->income_tax),
+    //         $this->safeValue($deduction->professional_tax),
+    //         $this->safeValue($deduction->license_fee),
+    //         $this->safeValue($deduction->nfch_donation),
+    //         $this->safeValue($deduction->gpf),
+    //         $this->safeValue($deduction->transport_allowance_recovery),
+    //         $this->safeValue($deduction->hra_recovery),
+    //         $this->safeValue($deduction->computer_advance_installment),
+    //         $this->safeValue($deduction->computer_advance_balance),
+    //         $this->safeValue($deduction->employee_contribution_10),
+    //         $this->safeValue($deduction->govt_contribution_14_recovery),
+    //         $this->safeValue($deduction->dies_non_recovery),
+    //         $this->safeValue($deduction->gis),
+    //         $this->safeValue($deduction->pay_recovery),
+    //         $this->safeValue($deduction->lic),
+    //         $this->safeValue($deduction->credit_society),
+    //     ], $arrearMap->toArray(), $recoveryMap->toArray(), [
+    //         $this->safeValue($deduction->total_deductions),
+    //         $this->safeValue($netSalary->net_amount),
+    //     ]);
+    // }
 
     public function styles(Worksheet $sheet)
     {

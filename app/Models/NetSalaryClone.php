@@ -33,6 +33,12 @@ class NetSalaryClone extends Model
         'section_officer_date',
         'account_officer_status',
         'account_officer_date',
+        'remarks',
+        'is_finalize',
+        'employee',
+        'employee_bank',
+        'finalized_date',
+        'released_date',
 
         // Additional earning fields
         'pay_structure_id',
@@ -80,7 +86,13 @@ class NetSalaryClone extends Model
         'lic',
         'credit_society',
         'total_deductions',
-        'deduction_recoveries'
+        'deduction_recoveries',
+
+    ];
+
+    protected $casts = [
+        'employee' => 'array',
+        'employee_bank' => 'array',
     ];
 
     public function getSalaryArrearsAttribute($value)

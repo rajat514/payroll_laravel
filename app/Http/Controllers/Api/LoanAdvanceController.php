@@ -22,6 +22,13 @@ class LoanAdvanceController extends Controller
             fn($q) => $q->where('employee_id', request('employee_id'))
         );
 
+        if (auth()->user()->institute !== 'BOTH') {
+            $query->wherehas(
+                'employee',
+                fn($q) => $q->where('institute', auth()->user()->institute)
+            );
+        }
+
         $total_count = $query->count();
 
         $data = $query->orderBy('created_at', 'DESC')->offset($offset)->limit($limit)->get();

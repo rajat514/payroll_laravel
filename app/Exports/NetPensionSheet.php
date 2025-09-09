@@ -20,27 +20,22 @@ class NetPensionSheet implements FromCollection, WithHeadings, WithMapping, With
 {
     private int $serial = 1;
     protected array $filters;
+    protected static array $arrearTypes = [];
+    protected static $netPensions;
 
     public function __construct(array $filters = [])
     {
         $this->filters = $filters;
-    }
 
-    public function title(): string
-    {
-        return 'Net Pension';
-    }
-
-    public function collection()
-    {
         $query = NetPension::with([
             'pensioner.employee',
             'pensionerBank',
-            'monthlyPension',
-            'pensionerDeduction'
+            'monthlyPension.arrears',
+            'pensionerDeduction',
         ]);
 
-        if (!empty($this->filters['start_month']) && !empty($this->filters['start_year'])) {
+        // Apply filters
+        if (!empty($filters['start_month']) && !empty($filters['start_year'])) {
             $query->where(function ($q) {
                 $q->where('year', '>', $this->filters['start_year'])
                     ->orWhere(function ($q2) {
@@ -50,7 +45,7 @@ class NetPensionSheet implements FromCollection, WithHeadings, WithMapping, With
             });
         }
 
-        if (!empty($this->filters['end_month']) && !empty($this->filters['end_year'])) {
+        if (!empty($filters['end_month']) && !empty($filters['end_year'])) {
             $query->where(function ($q) {
                 $q->where('year', '<', $this->filters['end_year'])
                     ->orWhere(function ($q2) {
@@ -60,75 +55,132 @@ class NetPensionSheet implements FromCollection, WithHeadings, WithMapping, With
             });
         }
 
-        if (!empty($this->filters['pension_type'])) {
+        if (!empty($filters['pension_type'])) {
             $query->whereHas('pensioner', function ($q) {
                 $q->where('type_of_pension', $this->filters['pension_type']);
             });
         }
 
-        if (empty($this->filters)) {
+        if (empty($filters)) {
             $now = now();
             $query->where('month', $now->month)->where('year', $now->year);
         }
 
-        return $query->orderBy('year')->orderBy('month')->get();
+        self::$netPensions = $query->orderBy('year')->orderBy('month')->get();
+
+        // Collect dynamic arrear types
+        self::$arrearTypes = self::$netPensions->flatMap(function ($item) {
+            return collect($item->monthlyPension->arrears ?? [])->pluck('type');
+        })->unique()->values()->all();
     }
 
-    private function safe($value)
+    public function title(): string
     {
-        return $value ?? '0';
+        return 'Net Pension';
+    }
+
+    public function collection()
+    {
+        return self::$netPensions;
+    }
+
+    private function safeValue($value)
+    {
+        return !is_null($value) && $value !== '' ? $value : '0';
+    }
+
+    public function headings(): array
+    {
+        $fixed = [
+            'S.No.',
+            'PPO No.',
+            'Month',
+            'Pensioner Name',
+            'Pension Type',
+            'Account Number',
+            'Basic Pension',
+            'Dearness Relief',
+            'Medical Allowance',
+            'Gross Pension',
+            'Income Tax',
+            'Commutation Amount',
+            'Recovery',
+            'Other Deduction',
+            'Total Deduction',
+        ];
+
+        $verificationArray = [
+            'Pensioner Operator Status',
+            'Pensioner Operator Date',
+            'DDO Status',
+            'DDO Date',
+            'Section Officer Status',
+            'Section Officer Date',
+            'Account Officer Status',
+            'Account Officer Date',
+            'Is Finalized',
+            'Finalized Date',
+            'Is Released',
+            'Released Date',
+        ];
+
+        $arrears = array_map(fn($type) => "Arrear: {$type}", self::$arrearTypes);
+
+        return array_merge($fixed, $arrears, ['Net Pension'], $verificationArray);
     }
 
     public function map($row): array
     {
         $pensioner = $row->pensioner;
-        $employee = $pensioner->employee ?? null;
-        $bank = $row->pensionerBank ?? (object) [];
-        $monthly = $row->monthlyPension ?? (object) [];
-        $deduction = $row->pensionerDeduction ?? (object) [];
+        $monthly = $row->monthlyPension ?? (object)[];
+        $deduction = $row->pensionerDeduction ?? (object)[];
+        $bank = $row->pensionerBank ?? (object)[];
+        $arrears = collect($monthly->arrears ?? []);
 
-        $monthYear = Carbon::create()->month($row->month)->format('F') . ', ' . $row->year;
+        $arrearMap = collect(self::$arrearTypes)->map(function ($type) use ($arrears) {
+            return $this->safeValue($arrears->firstWhere('type', $type)?->amount);
+        });
 
-        return [
+        return array_merge([
             $this->serial++,
             $pensioner->ppo_no,
-            $monthYear,
+            Carbon::create()->month($row->month)->format('F') . ', ' . $row->year,
             $pensioner->name,
             $pensioner->type_of_pension,
             $bank->account_no ?? '',
-            $this->safe($monthly->basic_pension ?? 0),
-            $this->safe($monthly->dr_amount ?? 0),
-            $this->safe($monthly->medical_allowance ?? 0),
-            $this->safe($monthly->total_pension ?? 0),
-            $this->safe($deduction->income_tax ?? 0),
-            $this->safe($deduction->commutation_amount ?? 0),
-            $this->safe($deduction->recovery ?? 0),
-            $this->safe($deduction->other ?? 0),
-            $this->safe($deduction->amount ?? 0),
-            $this->safe($row->net_pension),
-        ];
+            $this->safeValue($monthly->basic_pension),
+            $this->safeValue($monthly->dr_amount),
+            $this->safeValue($monthly->medical_allowance),
+            $this->safeValue($monthly->total_pension),
+            $this->safeValue($deduction->income_tax),
+            $this->safeValue($deduction->commutation_amount),
+            $this->safeValue($deduction->recovery),
+            $this->safeValue($deduction->other),
+            $this->safeValue($deduction->amount),
+        ], $arrearMap->toArray(), [
+            $this->safeValue($row->net_pension),
+
+            $this->formatStatus($row->pensioner_operator_status),
+            $this->safeValue($row->pensioner_operator_date),
+            $this->formatStatus($row->ddo_status),
+            $this->safeValue($row->ddo_date),
+            $this->formatStatus($row->section_officer_status),
+            $this->safeValue($row->section_officer_date),
+            $this->formatStatus($row->account_officer_status),
+            $this->safeValue($row->account_officer_date),
+            $this->formatStatus($row->is_finalize),
+            $this->safeValue($row->finalized_date),
+            $this->formatStatus($row->is_verified),
+            $this->safeValue($row->released_date),
+        ]);
     }
 
-    public function headings(): array
+    private function formatStatus($value)
     {
-        return [
-            'S.No. / क्रम संख्या',
-            'PPO No. / पीपीओ नंबर',
-            'Month / माह',
-            'Pensioner Name / पेंशनधारक का नाम',
-            'Pension Type / पेंशन का प्रकार',
-            'Account Number / खाता संख्या',
-            'Basic Pension / मूल पेंशन',
-            'Dearness Relief / महंगाई राहत',
-            'Medical Allowance / चिकित्सा भत्ता',
-            'Gross Pension / कुल पेंशन',
-            'Income Tax / आयकर',
-            'Commutation Amount / समर्पण राशि',
-            'Recovery / वसूली',
-            'Other Deduction / अन्य कटौती',
-            'Total Deduction / कुल कटौती',
-            'Net Pension / शुद्ध पेंशन'
-        ];
+        if (is_null($value)) {
+            return '';
+        }
+        return $value == 1 ? 'Yes' : 'No';
     }
 
     public function registerEvents(): array
@@ -148,9 +200,9 @@ class NetPensionSheet implements FromCollection, WithHeadings, WithMapping, With
                 $sheet->setCellValue("J{$row}", $totalPension);
                 $sheet->setCellValue("K{$row}", $totalIncomeTax);
                 $sheet->setCellValue("O{$row}", $totalDeduction);
-                $sheet->setCellValue("P{$row}", $totalNet);
+                $sheet->setCellValueByColumnAndRow(count($this->headings()), $row, $totalNet);
 
-                $sheet->getStyle("A{$row}:P{$row}")->applyFromArray([
+                $sheet->getStyle("A{$row}:" . $sheet->getHighestColumn() . "{$row}")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
@@ -163,7 +215,7 @@ class NetPensionSheet implements FromCollection, WithHeadings, WithMapping, With
                 ]);
 
                 $sheet->getRowDimension($row)->setRowHeight(30);
-            }
+            },
         ];
     }
 

@@ -24,6 +24,7 @@ return new class extends Migration
             $table->float('total_pension', 10, 2); // 
             $table->string('remarks', 255)->nullable();  //  Remarks (expiry or other notes)
             $table->enum('status', ['Initiated', 'Approved', 'Disbursed'])->default('Initiated');
+            $table->text('arrears')->nullable();
             $table->foreignId('added_by')->nullable()->constrained('users');
             $table->foreignId('edited_by')->nullable()->constrained('users');
             $table->timestamp('created_at')->useCurrent();

@@ -15,7 +15,7 @@ class PensionRelatedInfoController extends Controller
     private $all_permission_roles = ['IT Admin', 'Director', 'Pensioners Operator'];
     private $can_add_roles = ['IT Admin', 'Director', 'Pensioners Operator'];
     private $can_update_roles = ['IT Admin', 'Director', 'Pensioners Operator'];
-    private $can_view_roles = ['IT Admin', 'Director', 'Pensioners Operator', ' Administrative Officer'];
+    private $can_view_roles = ['IT Admin', 'Director', 'Pensioners Operator', 'Administrative Officer'];
 
     function __construct()
     {
@@ -27,15 +27,15 @@ class PensionRelatedInfoController extends Controller
 
     public function index()
     {
-        if (!$this->user->hasAnyRole($this->can_view_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_view_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $page = request('page') ? (int)request('page') : 1;
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PensionRelatedInfo::with('pensioner.employee');
+        $query = PensionRelatedInfo::with('pensioner.employee', 'pensioner.bankAccount',);
 
         $query->when(
             request('pensioner_id'),
@@ -51,9 +51,9 @@ class PensionRelatedInfoController extends Controller
 
     function store(Request $request)
     {
-        if (!$this->user->hasAnyRole($this->can_add_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_add_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $request->validate([
             'pensioner_id' => 'required|numeric|exists:pensioner_information,id',
@@ -131,9 +131,9 @@ class PensionRelatedInfoController extends Controller
 
     function update(Request $request, $id)
     {
-        if (!$this->user->hasAnyRole($this->can_update_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_update_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $pensionInfo = PensionRelatedInfo::find($id);
         if (!$pensionInfo) return response()->json(['errorMsg' => 'Pension Related Information not found!'], 404);
@@ -212,11 +212,18 @@ class PensionRelatedInfoController extends Controller
 
     function show($id)
     {
-        if (!$this->user->hasAnyRole($this->can_view_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_view_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
-        $data = PensionRelatedInfo::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'pensioner.employee')->find($id);
+        $data = PensionRelatedInfo::with(
+            'history.addedBy.roles:id,name',
+            'history.editedBy.roles:id,name',
+            'addedBy.roles:id,name',
+            'editedBy.roles:id,name',
+            'pensioner.employee',
+            'pensioner.bankAccount',
+        )->find($id);
 
         return response()->json(['data' => $data]);
     }

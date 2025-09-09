@@ -39,8 +39,21 @@ class UserController extends Controller
             'password' => 'required|min:5'
         ]);
 
+        $user = User::where('email', $request['username'])->first();
+
+        if (!$user) {
+            return response()->json(['errorMsg' => 'User not found.'], 404);
+        }
+
+        // if ($user->is_retired) {
+        //     return response()->json(['errorMsg' => 'You are retired. Login not allowed.'], 403);
+        // }
+
         if (auth()->attempt(['email' => $request['username'], 'password' => $request['password'], 'is_active' => 1])) {
             $user = User::find(auth()->id());
+
+            // Revoke all previous tokens for this user before issuing a new one
+            $user->tokens()->delete();
 
             $token = $user->createToken('api');
 
@@ -58,7 +71,16 @@ class UserController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = User::with('roles:id,name', 'history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name');
+        $query = User::with(
+            'roles:id,name',
+            'history.addedBy.roles:id,name',
+            'history.editedBy.roles:id,name',
+            'addedBy.roles:id,name',
+            'editedBy.roles:id,name'
+        )
+            ->whereDoesntHave('roles', function ($q) {
+                $q->where('name', 'IT Admin');
+            });
 
         $query->when(
             request('search'),
@@ -80,7 +102,12 @@ class UserController extends Controller
             }
         }
 
-        // $query->where()
+        // if (request('status') != 'all') {
+        $query->when(
+            request('status') !== null,
+            fn($q) => $q->where('is_retired', request('status'))
+        );
+        // }
 
         $total_count = $query->count();
 
@@ -93,7 +120,9 @@ class UserController extends Controller
     {
         $user = User::find(auth()->id());
 
-        $query = User::with('roles');
+        $query = User::with('roles')->whereDoesntHave('roles', function ($q) {
+            $q->where('name', 'IT Admin');
+        });
 
         if (!auth()->user()->hasRole('Pensioners Operator')) {
             if ($user->institute !== 'BOTH') {
@@ -161,7 +190,7 @@ class UserController extends Controller
             'last_name' => 'nullable|string',
             'is_retired' => 'required|in:0,1',
             'employee_code' => 'required|string|min:3|max:191|unique:users,employee_code',
-            'password' => 'required|string|min:5|max:30',
+            'password' => 'nullable|required_if:is_retired,0|string|min:5|max:30',
             'email' => 'required_if:is_retired,0|nullable|email|unique:users,email',
             'institute' => 'required|in:NIOH,ROHC,BOTH'
         ]);
@@ -175,7 +204,12 @@ class UserController extends Controller
         $user->email = $request['email'];
         $user->is_retired = $request['is_retired'];
         $user->institute = $request['institute'];
-        $user->password = Hash::make($request['password']);
+        // Set password only if provided (i.e., not retired or explicitly given)
+        if (!empty($request['password'])) {
+            $user->password = Hash::make($request['password']);
+        } else {
+            $user->password = null;
+        }
         $user->added_by = auth()->id();
 
         try {
@@ -275,6 +309,38 @@ class UserController extends Controller
             $user->save();
 
             return response()->json(['successMsg' => 'Password updated successfully.']);
+        } catch (\Exception $e) {
+            return response()->json(['errorMsg' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Allow the authenticated user to change their password after verifying old password
+     */
+    public function changeOwnPassword(Request $request)
+    {
+        $request->validate([
+            'old_password' => 'required|string',
+            'new_password' => 'required|string|max:30',
+        ]);
+
+        try {
+            /** @var User $user */
+            $user = User::findOrFail(auth()->id());
+
+            if (!Hash::check($request->old_password, $user->password)) {
+                return response()->json(['errorMsg' => 'Old password is incorrect.'], 422);
+            }
+
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+
+            // Revoke all existing tokens after password change for security
+            if (method_exists($user, 'tokens')) {
+                $user->tokens()->delete();
+            }
+
+            return response()->json(['successMsg' => 'Password changed successfully. Please log in again.']);
         } catch (\Exception $e) {
             return response()->json(['errorMsg' => $e->getMessage()], 500);
         }

@@ -23,6 +23,11 @@ return new class extends Migration {
             // Account Officer
             $table->boolean('account_officer_status')->default(0);
             $table->timestamp('account_officer_date')->nullable();
+
+            $table->boolean('is_finalize')->default(0);
+
+            $table->timestamp('released_date')->nullable();
+            $table->timestamp('finalized_date')->nullable();
         });
     }
 

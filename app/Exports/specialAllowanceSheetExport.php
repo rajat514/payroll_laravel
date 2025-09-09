@@ -1,8 +1,9 @@
 <?php
 
+
+
 namespace App\Exports;
 
-use App\Models\Employee;
 use App\Models\NetSalary;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Concerns\FromCollection;
@@ -17,34 +18,39 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
-class specialAllowanceSheetExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithTitle, WithEvents
+class SpecialAllowanceSheetExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithTitle, WithEvents
 {
     protected $filters;
     private int $serial = 1;
+    protected static $netSalaries;
+    protected static array $salaryArrearTypes = [];
+    protected static array $deductionRecoveryTypes = [];
+
     public function __construct(array $filters = [])
     {
         $this->filters = $filters;
-    }
 
+        if (!self::$netSalaries) {
+            $this->prepareDynamicColumns();
+        }
+    }
 
     public function title(): string
     {
         return 'Special Allowance';
     }
 
-
-    public function collection()
+    private function prepareDynamicColumns(): void
     {
+        $user = auth()->user();
         $now = Carbon::now();
 
         $currentMonth = $now->month;
         $currentYear = $now->year;
 
-        $previousMonth = $now->copy()->subMonth()->month;
-        $previousMonthYear = $now->copy()->subMonth()->year;
-
         $query = NetSalary::query();
 
+        // filters
         if (!empty($this->filters['start_month']) && !empty($this->filters['start_year'])) {
             $query->where(function ($q) {
                 $q->where('year', '>', $this->filters['start_year'])
@@ -65,7 +71,6 @@ class specialAllowanceSheetExport implements FromCollection, WithHeadings, WithM
             });
         }
 
-        // If no filters are passed, fallback to previous month
         if (
             empty($this->filters['start_month']) && empty($this->filters['start_year']) &&
             empty($this->filters['end_month']) && empty($this->filters['end_year'])
@@ -73,14 +78,27 @@ class specialAllowanceSheetExport implements FromCollection, WithHeadings, WithM
             $query->where('month', $currentMonth)->where('year', $currentYear);
         }
 
-        return $query->with([
-            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-            'employeeBank:id,employee_id,account_number',
-            'employee.latestEmployeeDesignation:id,employee_id,designation',
-            'paySlip',
-            'deduction',
-        ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+        self::$netSalaries = $query->with([
+            'paySlip.salaryArrears',
+            'deduction.deductionRecoveries',
+        ])->when(
+            $user->institute !== 'BOTH',
+            fn($q) => $q->where('employee->institute', $user->institute)
+        )->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+
+        // collect unique dynamic fields
+        self::$salaryArrearTypes = self::$netSalaries->flatMap(function ($item) {
+            return collect(optional($item->paySlip)->salaryArrears)->pluck('type');
+        })->unique()->values()->all();
+
+        self::$deductionRecoveryTypes = self::$netSalaries->flatMap(function ($item) {
+            return collect(optional($item->deduction)->deductionRecoveries)->pluck('type');
+        })->unique()->values()->all();
+    }
+
+    public function collection()
+    {
+        return self::$netSalaries;
     }
 
     private function safeValue($value)
@@ -88,80 +106,49 @@ class specialAllowanceSheetExport implements FromCollection, WithHeadings, WithM
         return !is_null($value) && $value !== '' ? $value : '0';
     }
 
-    public function registerEvents(): array
-    {
-        return [
-            AfterSheet::class => function (AfterSheet $event) {
-                $sheet = $event->sheet;
-                $row = $sheet->getHighestRow() + 1;
-
-                $netSalaries = $this->collection();
-
-                $totalHRARecovery = $netSalaries->sum(fn($item) => $item->deduction->hra_recovery ?? 0);
-                $transport_allowance_recovery = $netSalaries->sum(fn($item) => $item->deduction->transport_allowance_recovery ?? 0);
-
-                $totalNetAmount = $netSalaries->sum('net_amount');
-
-                // Add "TOTAL" label in first column
-                $sheet->setCellValue("A{$row}", 'TOTAL');
-
-                // Insert totals into correct columns
-                $sheet->setCellValue("G{$row}", $totalHRARecovery);     // Basic Pay
-                $sheet->setCellValue("F{$row}", $transport_allowance_recovery);  // Total Deductions
-
-                // Style total row
-                $sheet->getStyle("A{$row}:AL{$row}")->applyFromArray([
-                    'font' => ['bold' => true],
-                    'fill' => [
-                        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                        'startColor' => ['rgb' => 'F0F0F0'],
-                    ],
-                    'alignment' => [
-                        'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
-                        'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
-                    ],
-                ]);
-
-                // Optionally increase row height
-                $sheet->getRowDimension($row)->setRowHeight(30);
-            },
-        ];
-    }
-
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
-        $paySlip = $netSalary->paySlip ?? (object) [];
-        $deduction = $netSalary->deduction ?? (object) [];
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        $paySlip = optional($netSalary->paySlip);
+        $deduction = optional($netSalary->deduction);
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
-        $payPlusNpa = ($paySlip->basic_pay ?? 0) + ($paySlip->npa_amount ?? 0);
 
-        return [
+        $arrears = collect($paySlip->salaryArrears ?? []);
+        $recoveries = collect($deduction->deductionRecoveries ?? []);
+
+        $arrearMap = collect(self::$salaryArrearTypes)->map(
+            fn($type) => $this->safeValue($arrears->firstWhere('type', $type)?->amount)
+        );
+
+        $recoveryMap = collect(self::$deductionRecoveryTypes)->map(
+            fn($type) => $this->safeValue($recoveries->firstWhere('type', $type)?->amount)
+        );
+
+        return array_merge([
             $this->serial++,
             $monthYear,
             $employee->employee_code,
             $employee->name,
-            optional($employee->latestEmployeeDesignation)->designation,
-            $this->safeValue($deduction->transport_allowance_recovery ?? null),
-            $this->safeValue($deduction->hra_recovery ?? null),
-        ];
+            $employee->latest_employee_designation->designation ?? '',
+        ], $arrearMap->toArray(), $recoveryMap->toArray());
     }
 
     public function headings(): array
     {
-        return [
+        $fixed = [
             'अनु क्रमांक/Sr.NO.',
             'माह/Month',
             'कर्मचारी कोड/Employee Code',
             'नाम/Name',
             'पद/Designation',
-            'Transport Recovery',
-            'HRA Recovery',
         ];
+
+        $arrearHeadings = array_map(fn($type) => "{$type}", self::$salaryArrearTypes);
+        $recoveryHeadings = array_map(fn($type) => "{$type}", self::$deductionRecoveryTypes);
+
+        return array_merge($fixed, $arrearHeadings, $recoveryHeadings);
     }
 
     public function styles(Worksheet $sheet)
@@ -197,6 +184,11 @@ class specialAllowanceSheetExport implements FromCollection, WithHeadings, WithM
             ]);
         }
 
+        return [];
+    }
+
+    public function registerEvents(): array
+    {
         return [];
     }
 }

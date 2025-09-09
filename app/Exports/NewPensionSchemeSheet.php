@@ -33,6 +33,7 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
     }
     public function collection()
     {
+        $user = auth()->user();
         $now = Carbon::now();
 
         $currentMonth = $now->month;              // e.g., 7 for July
@@ -73,16 +74,19 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
 
 
         return $query->whereHas(
-            'employee',
+            'employeeRelation',
             fn($qn) => $qn->where('pension_scheme', 'NPS')
         )->with([
-            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-            'employeeBank:id,employee_id,account_number',
-            'employee.latestEmployeeDesignation:id,employee_id,designation',
+            // 'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+            // 'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+            // 'employeeBank:id,employee_id,account_number',
+            // 'employee.latestEmployeeDesignation:id,employee_id,designation',
             'paySlip',
             'deduction',
-        ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+        ])->when(
+            $user->institute !== 'BOTH',
+            fn($q) => $q->where('employee->institute', $user->institute)
+        )->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
     }
 
     public function registerEvents(): array
@@ -94,7 +98,8 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
 
                 $netSalaries = $this->collection();
 
-                $npsRecovery = $netSalaries->sum(fn($item) => $item->deduction->nps_recovery ?? 0);
+                $npsRecovery = $netSalaries->sum(fn($item) => $item->deduction->employee_contribution_10 ?? 0);
+                $npsRecovery14 = $netSalaries->sum(fn($item) => $item->deduction->govt_contribution_14_recovery ?? 0);
                 $totalBasicPay = $netSalaries->sum(fn($item) => $item->paySlip->basic_pay ?? 0);
                 $npaAmount = $netSalaries->sum(fn($item) => $item->paySlip->npa_amount ?? 0);
                 // $totalDeductions = $netSalaries->sum(fn($item) => $item->deduction->total_deductions ?? 0);
@@ -106,6 +111,7 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
 
                 // Insert totals into correct columns
                 $sheet->setCellValue("H{$row}", $npsRecovery);     // Basic Pay
+                $sheet->setCellValue("I{$row}", $npsRecovery14);     // Basic Pay
                 // $sheet->setCellValue("D{$row}", $totalDeductions);  // Total Deductions
                 $sheet->setCellValue("G{$row}", $totalBasicPay + $npaAmount);
 
@@ -136,10 +142,10 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
+        // $bank = $netSalary->employeeBank ?? (object) [];
         $paySlip = $netSalary->paySlip ?? (object) [];
         $deduction = $netSalary->deduction ?? (object) [];
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        // $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
@@ -151,9 +157,10 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
             $monthYear,
             $employee->employee_code,
             $employee->name,
-            optional($employee->latestEmployeeDesignation)->designation,
+            $employee->latest_employee_designation->designation ?? '',
             $payPlusNpa,
-            $this->safeValue(($deduction->nps_recovery ?? 0))
+            $this->safeValue(($deduction->employee_contribution_10 ?? 0)),
+            $this->safeValue(($deduction->govt_contribution_14_recovery ?? 0))
         ];
     }
 
@@ -167,7 +174,8 @@ class NewPensionSchemeSheet implements FromCollection, WithHeadings, WithMapping
             'नाम/Name',
             'पद/Designation',
             'पे + एन पी ए/Pay + NPA',
-            'NPS',
+            'Employee Contribution',
+            'GOVT Contribution',
         ];
     }
 

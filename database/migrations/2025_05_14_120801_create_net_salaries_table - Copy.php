@@ -31,6 +31,12 @@ return new class extends Migration
             $table->timestamp('section_officer_date')->nullable();
             $table->boolean('account_officer_status')->default(0);
             $table->timestamp('account_officer_date')->nullable();
+            $table->string('remarks')->nullable();
+            $table->string('is_finalize')->nullable();
+            $table->text('employee')->nullable();
+            $table->text('employee_bank')->nullable();
+            $table->timestamp('released_date')->nullable();
+            $table->timestamp('finalized_date')->nullable();
 
             $table->string('pay_structure_id');
             $table->float('basic_pay', 12, 2);

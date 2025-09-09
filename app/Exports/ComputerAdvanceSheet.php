@@ -3,8 +3,10 @@
 namespace App\Exports;
 
 use App\Models\Employee;
+use App\Models\LoanAdvance;
 use App\Models\NetSalary;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -32,9 +34,10 @@ class ComputerAdvanceSheet implements FromCollection, WithHeadings, WithMapping,
         return 'Computer Advance';
     }
 
-
+    //using net salary
     public function collection()
     {
+        $user = auth()->user();
         $now = Carbon::now();
 
         $currentMonth = $now->month;
@@ -74,14 +77,140 @@ class ComputerAdvanceSheet implements FromCollection, WithHeadings, WithMapping,
         }
 
         return $query->with([
-            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-            'employeeBank:id,employee_id,account_number',
-            'employee.latestEmployeeDesignation:id,employee_id,designation',
+            // 'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+            // 'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+            // 'employeeBank:id,employee_id,account_number',
+            // 'employee.latestEmployeeDesignation:id,employee_id,designation',
             'paySlip',
             'deduction',
-        ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+        ])->when(
+            $user->institute !== 'BOTH',
+            fn($q) => $q->where('employee->institute', $user->institute)
+        )
+            ->whereHas('deduction', function ($q) {
+                $q->where('computer_advance_balance', '>', 0);
+            })
+            ->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
     }
+
+    //Merge Table
+    // public function collection()
+    // {
+    //     $user = auth()->user();
+    //     $now = Carbon::now();
+
+    //     $currentMonth = $now->month;
+    //     $currentYear = $now->year;
+
+    //     $previousMonth = $now->copy()->subMonth()->month;
+    //     $previousMonthYear = $now->copy()->subMonth()->year;
+
+    //     /**
+    //      * -------------------------
+    //      * NetSalary (Computer Advance)
+    //      * -------------------------
+    //      */
+    //     $query = NetSalary::query();
+
+    //     if (!empty($this->filters['start_month']) && !empty($this->filters['start_year'])) {
+    //         $query->where(function ($q) {
+    //             $q->where('year', '>', $this->filters['start_year'])
+    //                 ->orWhere(function ($q2) {
+    //                     $q2->where('year', $this->filters['start_year'])
+    //                         ->where('month', '>=', $this->filters['start_month']);
+    //                 });
+    //         });
+    //     }
+
+    //     if (!empty($this->filters['end_month']) && !empty($this->filters['end_year'])) {
+    //         $query->where(function ($q) {
+    //             $q->where('year', '<', $this->filters['end_year'])
+    //                 ->orWhere(function ($q2) {
+    //                     $q2->where('year', $this->filters['end_year'])
+    //                         ->where('month', '<=', $this->filters['end_month']);
+    //                 });
+    //         });
+    //     }
+
+    //     // If no filters passed → fallback to current month
+    //     if (
+    //         empty($this->filters['start_month']) && empty($this->filters['start_year']) &&
+    //         empty($this->filters['end_month']) && empty($this->filters['end_year'])
+    //     ) {
+    //         $query->where('month', $currentMonth)->where('year', $currentYear);
+    //     }
+
+    //     $netSalaries = $query->with(['paySlip', 'deduction'])
+    //         ->when(
+    //             $user->institute !== 'BOTH',
+    //             fn($q) => $q->where('employee->institute', $user->institute)
+    //         )
+    //         ->orderBy('year', 'asc')->orderBy('month', 'asc')
+    //         ->get()
+    //         ->map(function ($ns) {
+    //             return [
+    //                 'type' => 'Computer Advance',
+    //                 'month' => $ns->month,
+    //                 'year' => $ns->year,
+    //                 'employee_code' => $ns->employee->employee_code ?? '',
+    //                 'name' => $ns->employee->name ?? '',
+    //                 'designation' => $ns->employee->latest_employee_designation->designation ?? '',
+    //                 'computer_advance_installment' => $ns->deduction->computer_advance_installment ?? 0,
+    //                 // 'balance' => $ns->deduction->computer_advance_balance ?? 0,
+    //             ];
+    //         });
+
+    //     /**
+    //      * -------------------------
+    //      * LoanAdvance
+    //      * -------------------------
+    //      */
+    //     $loans = LoanAdvance::with('employee')
+    //         ->where('is_active', 1)
+    //         ->when(
+    //             $user->institute !== 'BOTH',
+    //             fn($q) => $q->whereHas('employee', fn($q2) => $q2->where('institute', $user->institute))
+    //         )
+    //         ->where('loan_type', 'Computer')
+    //         ->get()
+    //         ->map(function ($loan) {
+    //             return [
+    //                 // 'type' => 'Loan Advance',
+    //                 // 'month' => null,
+    //                 // 'year' => null,
+    //                 // 'employee_code' => $loan->employee->employee_code ?? '',
+    //                 // 'name' => trim($loan->employee->prefix . ' ' . $loan->employee->first_name . ' ' . $loan->employee->last_name),
+    //                 // 'designation' => '',
+    //                 'loan_amount' => $loan->loan_amount ?? 0,
+    //                 'current_installment' => $loan->current_installment ?? 0,
+    //                 'remaining_balance' => $loan->remaining_balance ?? 0,
+    //             ];
+    //         });
+
+    //     /**
+    //      * -------------------------
+    //      * Merge Both Collections
+    //      * -------------------------
+    //      */
+    //     return (new \Illuminate\Support\Collection())
+    //         ->merge($netSalaries)
+    //         ->merge($loans);
+    // }
+
+    //using Loan lable
+    // public function collection()
+    // {
+    //     $user = auth()->user();
+
+    //     return LoanAdvance::with('employee:id,employee_code,prefix,first_name,middle_name,last_name,pension_number', 'employee.latestEmployeeDesignation')
+    //         ->where('is_active', 1)
+    //         ->where('loan_type', 'Computer')
+    //         ->when($user->institute !== 'BOTH', function ($q) use ($user) {
+    //             $q->whereHas('employee', fn($q2) => $q2->where('institute', $user->institute));
+    //         })
+    //         ->get();
+    // }
+
 
     private function safeValue($value)
     {
@@ -95,22 +224,26 @@ class ComputerAdvanceSheet implements FromCollection, WithHeadings, WithMapping,
                 $sheet = $event->sheet;
                 $row = $sheet->getHighestRow() + 1;
 
+                $totalPayCol = array_search('Gross Pay', $this->headings()) + 1;
+                $totalDeductionCol = array_search('Total Deductions', $this->headings()) + 1;
+                $netAmountCol = array_search('Net Amount', $this->headings()) + 1;
+
                 $netSalaries = $this->collection();
 
-                $computer_advance_balance = $netSalaries->sum(fn($item) => $item->deduction->computer_advance_balance ?? 0);
-                $computer_advance_installment = $netSalaries->sum(fn($item) => $item->deduction->computer_advance_installment ?? 0);
-
+                $totalPay = $netSalaries->sum(fn($item) => $item->paySlip->total_pay ?? 0);
+                $total = $netSalaries->sum(fn($item) => $item->deduction->computer_advance_interest ?? 0);
+                $totalRemaining = $netSalaries->sum(fn($item) => $item->deduction->computer_advance_balance ?? 0);
                 $totalNetAmount = $netSalaries->sum('net_amount');
 
-                // Add "TOTAL" label in first column
+                // Label
                 $sheet->setCellValue("A{$row}", 'TOTAL');
+                $sheet->setCellValue("F{$row}", $total);
+                $sheet->setCellValue("I{$row}", $totalRemaining);
 
-                // Insert totals into correct columns
-                $sheet->setCellValue("G{$row}", $computer_advance_balance);  // Total Deductions
-                $sheet->setCellValue("F{$row}", $computer_advance_installment);   // Net Amount
 
-                // Style total row
-                $sheet->getStyle("A{$row}:AL{$row}")->applyFromArray([
+                // Style Total Row
+                $lastCol = $sheet->getHighestColumn();
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [
                         'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
@@ -121,9 +254,6 @@ class ComputerAdvanceSheet implements FromCollection, WithHeadings, WithMapping,
                         'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
                     ],
                 ]);
-
-                // Optionally increase row height
-                $sheet->getRowDimension($row)->setRowHeight(30);
             },
         ];
     }
@@ -131,10 +261,10 @@ class ComputerAdvanceSheet implements FromCollection, WithHeadings, WithMapping,
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
+        // $bank = $netSalary->employeeBank ?? (object) [];
         $paySlip = $netSalary->paySlip ?? (object) [];
         $deduction = $netSalary->deduction ?? (object) [];
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        // $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
@@ -142,25 +272,29 @@ class ComputerAdvanceSheet implements FromCollection, WithHeadings, WithMapping,
 
         return [
             $this->serial++,
+            $employee->latest_employee_designation->designation ?? '',
             $monthYear,
             $employee->employee_code,
             $employee->name,
-            optional($employee->latestEmployeeDesignation)->designation,
-            $this->safeValue($deduction->computer_advance_installment ?? null),
-            $this->safeValue($deduction->computer_advance_balance ?? null),
+            $this->safeValue($netSalary->deduction->computer_advance_interest),
+            $this->safeValue($netSalary->deduction->computer_advance_installment),
+            $this->safeValue($netSalary->deduction->computer_advance_inst_no),
+            $this->safeValue($deduction->deduction->computer_advance_balance ?? null),
         ];
     }
 
     public function headings(): array
     {
         return [
-            'अनु क्रमांक/Sr.NO.',
+            'अनु क्रमांक/S.NO.',
+            'Designation',
             'माह/Month',
             'कर्मचारी कोड/Employee Code',
             'नाम/Name',
-            'पद/Designation',
-            'कंप्यूटर अग्रिम किस्त/Computer Advance Installment',
-            'कंप्यूटर अग्रिम शेष/Computer Advance Balance',
+            'Computer Advacnce Total',
+            'Computer Advance Inst. Amount',
+            'Computer Advance Inst No.',
+            'Computer Advance Remaining balance',
         ];
     }
 

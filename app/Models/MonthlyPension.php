@@ -24,10 +24,15 @@ class MonthlyPension extends Model
         'total_pension',
         'remarks',
         'status',
+        'arrears',
         'added_by',
         'edited_by'
     ];
 
+    public function getArrearsAttribute($value)
+    {
+        return json_decode($value, true);
+    }
 
     public function addedBy(): BelongsTo
     {

@@ -20,7 +20,7 @@ class MultiSheetExport implements WithMultipleSheets
     {
         return [
             new EmployeesSheetExport($this->filters),
-            // new SalariesSheetExport(),
+            new SalariesSheetExport(),
             // new DeductionSheetExport(),
             new GPFSheet($this->filters),
             new NewPensionSchemeSheet($this->filters),
@@ -33,7 +33,8 @@ class MultiSheetExport implements WithMultipleSheets
             new specialAllowanceSheetExport($this->filters),
             new ComputerAdvanceSheet($this->filters),
             new LicenseFeeSheet($this->filters),
-            new NetPensionSheet($this->filters),
+            new DonationNFCHSheetExport($this->filters),
+            // new NetPensionSheet($this->filters),
         ];
     }
 }

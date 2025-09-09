@@ -11,7 +11,7 @@ class QuarterController extends Controller
 {
     private \App\Models\User $user;
 
-    private $all_permission_roles = ['IT Admin', 'Director'];
+    private $all_permission_roles = ['IT Admin', 'Director', 'Salary Processing Coordinator (ROHC)', 'Salary Processing Coordinator (NIOH)'];
 
     function __construct()
     {
@@ -51,7 +51,7 @@ class QuarterController extends Controller
         }
 
         $request->validate([
-            'quarter_no' => 'required|string|max:191',
+            'quarter_no' => 'required|string|max:191|unique:quarters,quarter_no',
             'type' => 'required|in:B,C',
             'license_fee' => 'required|string|max:191'
         ]);
@@ -84,7 +84,7 @@ class QuarterController extends Controller
         if (!$quarter) return response()->json(['errorMsg' => 'Quarter Not Found!'], 404);
 
         $request->validate([
-            'quarter_no' => 'required|string|max:191',
+            'quarter_no' => 'required|string|max:191|unique:quarters,quarter_no,' . $id . ',id',
             'type' => 'required|in:B,C',
             'license_fee' => 'required|string|max:191'
         ]);

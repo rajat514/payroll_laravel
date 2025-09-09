@@ -1,0 +1,18 @@
+{
+    "noto sans devanagari": {
+        "normal": "D:\\Rajat Rawat\\Laravel\\payroll-nioh\\public\\fonts\/\/noto_sans_devanagari_normal_844869576d57dd36df7c6da327f0eac4",
+        "bold": "noto_sans_devanagari_bold_134a3ac2b7d728bb0655fd7a3b2103c5"
+    },
+    "notosansdevanagari": {
+        "normal": "D:\\Rajat Rawat\\Laravel\\payroll-nioh\\public\\fonts\/\/notosansdevanagari_normal_844869576d57dd36df7c6da327f0eac4",
+        "bold": "notosansdevanagari_bold_134a3ac2b7d728bb0655fd7a3b2103c5"
+    },
+    "noto_sans_devanagari": {
+        "normal": "D:\\Rajat Rawat\\Laravel\\payroll-nioh\\public\\fonts\/\/noto_sans_devanagari_normal_e09750e2f823815d7cf075561d4d945b",
+        "bold": "noto_sans_devanagari_bold_fb763adf469d1cead459b49cd577e051"
+    },
+    "mangal": {
+        "normal": "D:\\Rajat Rawat\\Laravel\\payroll-nioh\\public\\fonts\/\/mangal_normal_ad71253217f67dcc59a359d8272d1c0d",
+        "bold": "mangal_bold_ad71253217f67dcc59a359d8272d1c0d"
+    }
+}

@@ -29,9 +29,9 @@ class PensionDocumentController extends Controller
      */
     public function index()
     {
-        if (!$this->user->hasAnyRole($this->can_view_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_view_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $page = request('page') ? (int)request('page') : 1;
         $limit = request('limit') ? (int)request('limit') : 30;
@@ -59,9 +59,9 @@ class PensionDocumentController extends Controller
      */
     public function store(Request $request)
     {
-        if (!$this->user->hasAnyRole($this->can_add_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_add_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $fileName = '';
         $request->validate([
@@ -102,9 +102,9 @@ class PensionDocumentController extends Controller
      */
     public function show(string $id)
     {
-        if (!$this->user->hasAnyRole($this->can_view_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_view_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $data = PensionerDocuments::with('history.addedBy.roles:id,name', 'history.editedBy.roles:id,name', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'pensioner.employee')->find($id);
 
@@ -124,9 +124,9 @@ class PensionDocumentController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        if (!$this->user->hasAnyRole($this->can_update_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_update_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $data = PensionerDocuments::find($id);
         if (!$data) return response()->json([

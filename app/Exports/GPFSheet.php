@@ -33,6 +33,7 @@ class GPFSheet implements FromCollection, WithHeadings, WithMapping, WithStyles,
     }
     public function collection()
     {
+        $user = auth()->user();
         $now = Carbon::now();
 
         $currentMonth = $now->month;              // e.g., 7 for July
@@ -73,16 +74,19 @@ class GPFSheet implements FromCollection, WithHeadings, WithMapping, WithStyles,
 
 
         return $query->whereHas(
-            'employee',
+            'employeeRelation',
             fn($qn) => $qn->where('pension_scheme', 'GPF')
         )->with([
-            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-            'employeeBank:id,employee_id,account_number',
-            'employee.latestEmployeeDesignation:id,employee_id,designation',
+            // 'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+            // 'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+            // 'employeeBank:id,employee_id,account_number',
+            // 'employee.latestEmployeeDesignation:id,employee_id,designation',
             'paySlip',
             'deduction',
-        ])->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
+        ])->when(
+            $user->institute !== 'BOTH',
+            fn($q) => $q->where('employee->institute', $user->institute)
+        )->orderBy('year', 'asc')->orderBy('month', 'asc')->get();
     }
 
     public function registerEvents(): array
@@ -133,10 +137,10 @@ class GPFSheet implements FromCollection, WithHeadings, WithMapping, WithStyles,
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
+        // $bank = $netSalary->employeeBank ?? (object) [];
         $paySlip = $netSalary->paySlip ?? (object) [];
         $deduction = $netSalary->deduction ?? (object) [];
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        // $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
@@ -148,7 +152,7 @@ class GPFSheet implements FromCollection, WithHeadings, WithMapping, WithStyles,
             $monthYear,
             $employee->employee_code,
             $employee->name,
-            optional($employee->latestEmployeeDesignation)->designation,
+            $employee->latest_employee_designation->designation ?? '',
             $payPlusNpa,
             $this->safeValue(($deduction->gpf ?? 0))
         ];

@@ -27,8 +27,13 @@ class LoanSheet implements FromCollection, WithHeadings, WithMapping, WithStyles
 
     public function collection()
     {
+        $user = auth()->user();
+
         return LoanAdvance::with('employee:id,employee_code,prefix,first_name,middle_name,last_name,pension_number')
             ->where('is_active', 1)
+            ->when($user->institute !== 'BOTH', function ($q) use ($user) {
+                $q->whereHas('employee', fn($q2) => $q2->where('institute', $user->institute));
+            })
             ->orderBy('sanctioned_date', 'asc')
             ->get();
     }

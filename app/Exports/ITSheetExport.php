@@ -33,7 +33,7 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
     }
     public function collection()
     {
-
+        $user = auth()->user();
         $now = Carbon::now();
 
         $currentMonth = $now->month;              // e.g., 7 for July
@@ -73,13 +73,16 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
         }
 
         return $query->with([
-            'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
-            'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
-            'employeeBank:id,employee_id,account_number',
-            'employee.latestEmployeeDesignation:id,employee_id,designation',
+            // 'employee.employeePayStructure.PayMatrixCell.payMatrixLevel:id,name',
+            // 'employee:id,employee_code,prefix,first_name,middle_name,last_name,increment_month,pension_number',
+            // 'employeeBank:id,employee_id,account_number',
+            // 'employee.latestEmployeeDesignation:id,employee_id,designation',
             'paySlip',
             'deduction',
-        ])->orderBy('year', 'asc')->orderBy(
+        ])->when(
+            $user->institute !== 'BOTH',
+            fn($q) => $q->where('employee->institute', $user->institute)
+        )->orderBy('year', 'asc')->orderBy(
             'month',
             'asc'
         )->get();
@@ -95,7 +98,7 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
                 $netSalaries = $this->collection();
 
                 $IncomeTax = $netSalaries->sum(fn($item) => $item->deduction->income_tax ?? 0);
-                // $totalBasicPay = $netSalaries->sum(fn($item) => $item->paySlip->basic_pay ?? 0);
+                $totalPay = $netSalaries->sum(fn($item) => $item->paySlip->total_pay ?? 0);
                 // $totalDeductions = $netSalaries->sum(fn($item) => $item->deduction->total_deductions ?? 0);
 
                 $totalNetAmount = $netSalaries->sum('net_amount');
@@ -105,7 +108,7 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
 
                 // Insert totals into correct columns
                 $sheet->setCellValue("E{$row}", $IncomeTax);
-                $sheet->setCellValue("F{$row}", $totalNetAmount);
+                $sheet->setCellValue("F{$row}", $totalPay);
 
                 // Style total row
                 $sheet->getStyle("A{$row}:AL{$row}")->applyFromArray([
@@ -134,10 +137,10 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
     public function map($netSalary): array
     {
         $employee = $netSalary->employee;
-        $bank = $netSalary->employeeBank ?? (object) [];
+        // $bank = $netSalary->employeeBank ?? (object) [];
         $paySlip = $netSalary->paySlip ?? (object) [];
         $deduction = $netSalary->deduction ?? (object) [];
-        $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
+        // $pay_level = optional(optional(optional($employee->employeePayStructure)->payMatrixCell)->payMatrixLevel);
 
         $monthName = Carbon::create()->month($netSalary->month)->format('F');
         $monthYear = $monthName . ' ' . $netSalary->year;
@@ -149,7 +152,7 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $employee->employee_code,
             $employee->name,
             $this->safeValue($deduction->income_tax ?? null),
-            $this->safeValue($netSalary->net_amount),
+            $this->safeValue($paySlip->total_pay ?? null),
         ];
     }
 
@@ -161,7 +164,7 @@ class ITSheetExport implements FromCollection, WithHeadings, WithMapping, WithSt
             'कर्मचारी कोड/Employee Code',
             'नाम/Name',
             'आयकर/Income Tax',
-            'घर ले जाओ/Take Home',
+            'Total Pay',
         ];
     }
 

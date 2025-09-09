@@ -42,11 +42,19 @@ class PensionerController extends Controller
         $limit = request('limit') ? (int)request('limit') : 30;
         $offset = ($page - 1) * $limit;
 
-        $query = PensionerInformation::with('employee', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'user');
+        $query = PensionerInformation::with('employee', 'addedBy.roles:id,name', 'editedBy.roles:id,name', 'user', 'bankAccount');
 
         $query->when(
             request('retired_employee_id'),
             fn($q) => $q->where('retired_employee_id', request('retired_employee_id'))
+        );
+
+        $query->when(
+            request('search'),
+            fn($q) => $q->where('first_name', 'LIKE', '%' . request('search') . '%')
+                ->orwhere('middle_name', 'LIKE', '%' . request('search') . '%')
+                ->orwhere('last_name', 'LIKE', '%' . request('search') . '%')
+                ->orwhere('ppo_no', 'LIKE', '%' . request('search') . '%')
         );
 
         $total_count = $query->count();
@@ -71,9 +79,9 @@ class PensionerController extends Controller
 
     public function store(Request $request)
     {
-        if (!$this->user->hasAnyRole($this->can_add_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_add_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $request->validate([
             'ppo_no' => 'required|string|max:20',
@@ -261,9 +269,9 @@ class PensionerController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        if (!$this->user->hasAnyRole($this->can_update_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_update_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $pensioner = PensionerInformation::find($id);
 
@@ -375,9 +383,9 @@ class PensionerController extends Controller
 
     public function changeStatus(Request $request, $id)
     {
-        if (!$this->user->hasAnyRole($this->can_update_roles)) {
-            return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
-        }
+        // if (!$this->user->hasAnyRole($this->can_update_roles)) {
+        //     return response()->json(['errorMsg' => 'You Don\'t have Access!'], 403);
+        // }
 
         $pensioner = PensionerInformation::find($id);
 

@@ -33,6 +33,11 @@ class NetPensionClone extends Model
         'section_officer_date',
         'account_officer_status',
         'account_officer_date',
+        'is_finalize',
+        'finalized_date',
+        'released_date',
+        'pensioner',
+        'pensioner_bank',
 
         'pension_rel_info_id',
         'net_pension_clone_id',
@@ -44,6 +49,7 @@ class NetPensionClone extends Model
         'total_pension',
         'remarks',
         'status',
+        'arrears',
 
         'commutation_amount',
         'income_tax',
@@ -51,6 +57,11 @@ class NetPensionClone extends Model
         'other',
         'amount',
         'description',
+    ];
+
+    protected $casts = [
+        'pensioner' => 'array',
+        'pensioner_bank' => 'array',
     ];
 
     public function addedBy(): BelongsTo

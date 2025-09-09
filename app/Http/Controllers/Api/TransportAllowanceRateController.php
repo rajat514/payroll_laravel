@@ -16,7 +16,7 @@ class TransportAllowanceRateController extends Controller
     private $can_view_roles = ['IT Admin', 'Director', 'Administrative Officer', 'Account Officer', 'Coordinator - NIOH', 'Coordinator - ROHC', 'Pension Operator', 'End Users'];
     private $can_post_roles = ['IT Admin', 'Director', 'Administrative Officer', 'Account Officer', 'Coordinator - NIOH', 'Coordinator - ROHC', 'Pension Operator'];
     private $can_view_own_roles = ['Coordinator - NIOH', 'Coordinator - ROHC', 'Pension Operator'];
-    private $all_permission_roles = ['IT Admin', 'Director'];
+    private $all_permission_roles = ['IT Admin', 'Director', 'Salary Processing Coordinator (ROHC)', 'Salary Processing Coordinator (NIOH)'];
 
     public function __construct()
     {
